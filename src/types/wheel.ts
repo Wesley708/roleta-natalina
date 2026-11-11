@@ -8,12 +8,12 @@ export interface WheelItem {
 export type SpinPhase = 'idle' | 'pushing' | 'spinning' | 'revealing' | 'revealed';
 
 export const CHRISTMAS_SLICE_PALETTE: Array<{ bg: string; text: string; pin: string }> = [
-  { bg: '#ad1f23', text: '#fff9ed', pin: '#cc292e' }, // Vivid Crimson Red
-  { bg: '#f5e9d3', text: '#2e1507', pin: '#f7edd9' }, // Frosted Cream/Ivory
-  { bg: '#206839', text: '#fff9ed', pin: '#2ba354' }, // Forest Green
-  { bg: '#a31b20', text: '#fff9ed', pin: '#c22328' }, // Crimson Red
-  { bg: '#f2e5cd', text: '#2e1507', pin: '#f5e8d0' }, // Frosted Cream
-  { bg: '#1c5e33', text: '#fff9ed', pin: '#248f47' }, // Forest Green
+  { bg: '#e61c24', text: '#ffffff', pin: '#ff3b42' }, // Bright Ruby Red
+  { bg: '#009640', text: '#ffffff', pin: '#12b856' }, // Vibrant Emerald Green
+  { bg: '#f8fafc', text: '#120502', pin: '#e2e8f0' }, // Pure Snow White
+  { bg: '#c90e17', text: '#ffffff', pin: '#e8252e' }, // Deep Festive Crimson
+  { bg: '#0f7a3d', text: '#ffffff', pin: '#219c55' }, // Rich Pine Green
+  { bg: '#f1f5f9', text: '#120502', pin: '#cbd5e1' }, // Frosted White
 ];
 
 export const DEFAULT_WHEEL_ITEMS: WheelItem[] = [
@@ -38,20 +38,14 @@ export const DEFAULT_WHEEL_ITEMS: WheelItem[] = [
   {
     id: 'item-4',
     label: 'Contar uma piada de tiozão 😂',
-    color: CHRISTMAS_SLICE_PALETTE[3 % CHRISTMAS_SLICE_PALETTE.length].bg,
-    textColor: CHRISTMAS_SLICE_PALETTE[3 % CHRISTMAS_SLICE_PALETTE.length].text,
-  },
-  {
-    id: 'item-5',
-    label: 'Comer um doce sem usar as mãos 🍬',
-    color: CHRISTMAS_SLICE_PALETTE[4 % CHRISTMAS_SLICE_PALETTE.length].bg,
-    textColor: CHRISTMAS_SLICE_PALETTE[4 % CHRISTMAS_SLICE_PALETTE.length].text,
+    color: CHRISTMAS_SLICE_PALETTE[3].bg,
+    textColor: CHRISTMAS_SLICE_PALETTE[3].text,
   },
   {
     id: 'item-6',
     label: 'Fazer 3 desejos para o Ano Novo ✨',
-    color: CHRISTMAS_SLICE_PALETTE[5 % CHRISTMAS_SLICE_PALETTE.length].bg,
-    textColor: CHRISTMAS_SLICE_PALETTE[5 % CHRISTMAS_SLICE_PALETTE.length].text,
+    color: CHRISTMAS_SLICE_PALETTE[5].bg,
+    textColor: CHRISTMAS_SLICE_PALETTE[5].text,
   },
   {
     id: 'item-7',

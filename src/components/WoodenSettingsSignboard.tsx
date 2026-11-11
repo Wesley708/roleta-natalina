@@ -177,7 +177,7 @@ export function WoodenSettingsSignboard({
             <button
               type="submit"
               disabled={disabled || !draft.trim()}
-              className="h-9 px-4 rounded-md bg-gradient-to-b from-[#cc292b] to-[#8f1517] hover:from-[#de3335] hover:to-[#a1191c] active:scale-[0.98] disabled:opacity-45 disabled:pointer-events-none border border-[#f08070]/40 text-xs font-bold text-[#fff8ec] shadow-[0_2px_6px_rgba(0,0,0,0.55)] flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-transform duration-150 cursor-pointer"
+              className="h-9 px-4 rounded-md bg-gradient-to-b from-[#1e6f3d] to-[#124225] hover:from-[#258a4c] hover:to-[#16552e] active:scale-[0.98] disabled:opacity-45 disabled:pointer-events-none border border-[#48a365]/40 text-xs font-bold text-[#fff8ec] shadow-[0_2px_6px_rgba(0,0,0,0.55)] flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-transform duration-150 cursor-pointer"
             >
               <Plus className="w-4 h-4 stroke-[2.5]" />
               <span>Adicionar</span>

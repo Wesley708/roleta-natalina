@@ -24,8 +24,8 @@ export function createWheelFaceTexture(
           {
             id: 'empty',
             label: 'Adicione itens na placa 🎄',
-            color: '#9e1c1c',
-            textColor: '#fff7e6',
+            color: '#e61c24',
+            textColor: '#ffffff',
           },
         ];
 
@@ -45,31 +45,23 @@ export function createWheelFaceTexture(
     ctx.closePath();
     ctx.clip();
 
-    // Base slice painted wood color with radial depth shading
-    const grad = ctx.createRadialGradient(cx, cy, radius * 0.12, cx, cy, radius);
-    grad.addColorStop(0, shadeHex(item.color, 10));
-    grad.addColorStop(0.72, item.color);
-    grad.addColorStop(0.95, shadeHex(item.color, -18));
-    grad.addColorStop(1, shadeHex(item.color, -32));
+    // Rich, pure slice color with subtle 3D radial depth (no wash-out)
+    const grad = ctx.createRadialGradient(cx, cy, radius * 0.05, cx, cy, radius);
+    grad.addColorStop(0, shadeHex(item.color, 18));
+    grad.addColorStop(0.5, item.color);
+    grad.addColorStop(1, shadeHex(item.color, -10));
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, size, size);
 
-    // Painted wood plank grain streaks along the slice radial axis
+    // Subtle inner center glow
     ctx.save();
     ctx.translate(cx, cy);
     ctx.rotate(midAngle);
-    ctx.globalAlpha = 0.13;
-    for (let g = -radius; g < radius; g += 9) {
-      ctx.fillStyle = g % 18 === 0 ? '#1a0c04' : '#fff6e5';
-      ctx.fillRect(0, g * 0.45, radius, 2.2);
-    }
-
-    // Subtle frosted snow dusting near outer rim of slice
-    const frostGrad = ctx.createRadialGradient(0, 0, radius * 0.82, 0, 0, radius);
-    frostGrad.addColorStop(0, 'rgba(255,255,255,0)');
-    frostGrad.addColorStop(1, 'rgba(255,250,242,0.22)');
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = frostGrad;
+    const innerGlow = ctx.createRadialGradient(0, 0, 0, 0, 0, radius * 0.85);
+    innerGlow.addColorStop(0, 'rgba(255, 255, 255, 0.20)');
+    innerGlow.addColorStop(0.4, 'rgba(255, 255, 255, 0.04)');
+    innerGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = innerGlow;
     ctx.beginPath();
     ctx.arc(0, 0, radius, -sliceAngle, sliceAngle);
     ctx.lineTo(0, 0);
@@ -77,12 +69,12 @@ export function createWheelFaceTexture(
     ctx.fill();
     ctx.restore();
 
-    // Soft bevel shadow along slice borders
-    ctx.strokeStyle = 'rgba(25, 10, 2, 0.42)';
-    ctx.lineWidth = 8;
+    // Crisp gold divider line between slices
+    ctx.strokeStyle = 'rgba(255, 225, 120, 0.95)';
+    ctx.lineWidth = 10;
     ctx.beginPath();
     ctx.moveTo(cx, cy);
-    ctx.arc(cx, cy, radius, startAngle, endAngle);
+    ctx.arc(cx, cy, radius - 3, startAngle, endAngle);
     ctx.closePath();
     ctx.stroke();
 
@@ -91,20 +83,19 @@ export function createWheelFaceTexture(
     ctx.translate(cx, cy);
     ctx.rotate(midAngle);
 
-    const maxTextWidth = radius * 0.62;
-    const innerOffset = radius * 0.25;
-    const outerLimit = radius * 0.89;
+    const maxTextWidth = radius * 0.64;
+    const innerOffset = radius * 0.24;
+    const outerLimit = radius * 0.90;
     const textCenterRadius = (innerOffset + outerLimit) / 2;
 
-    // Scale font smoothly with slice count
-    const baseFontPx = Math.max(32, Math.min(54, Math.floor(460 / Math.max(4, count))));
-    ctx.font = `800 ${baseFontPx}px "Plus Jakarta Sans", sans-serif`;
+    const baseFontPx = Math.max(32, Math.min(52, Math.floor(440 / Math.max(4, count))));
+    ctx.font = `600 ${baseFontPx}px "Plus Jakarta Sans", system-ui, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
     const displayLabel = truncateText(ctx, item.label, maxTextWidth);
 
-    // Flip text on left half so it's never upside-down to the viewer
+    // Flip text on left half so it's never upside-down
     const normalizedDeg = (((midAngle * 180) / Math.PI) % 360 + 360) % 360;
     const isLeftSide = normalizedDeg > 90 && normalizedDeg < 270;
 
@@ -113,34 +104,55 @@ export function createWheelFaceTexture(
       ctx.rotate(Math.PI);
     }
 
-    // Heavy dark or light stroke outline for razor-sharp legibility against any background slice color
+    // Slim, clean dark outline for high contrast without heavy thickness
     const isLightBg = isLightHex(item.color);
     ctx.lineJoin = 'round';
     ctx.miterLimit = 2;
-    ctx.lineWidth = Math.max(6, Math.floor(baseFontPx * 0.18));
-    ctx.strokeStyle = isLightBg ? 'rgba(20, 8, 2, 0.95)' : 'rgba(0, 0, 0, 0.92)';
+    ctx.lineWidth = Math.max(1.5, Math.floor(baseFontPx * 0.04));
+    ctx.strokeStyle = isLightBg ? 'rgba(10, 3, 1, 0.85)' : 'rgba(0, 0, 0, 0.75)';
     ctx.strokeText(displayLabel, 0, 0);
 
-    // Subtle drop shadow for 3D depth
-    ctx.shadowColor = isLightBg ? 'rgba(255, 250, 240, 0.7)' : 'rgba(0, 0, 0, 0.9)';
-    ctx.shadowBlur = isLightBg ? 2 : 6;
+    // Clean text fill with subtle drop shadow
+    ctx.shadowColor = isLightBg ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.6)';
+    ctx.shadowBlur = 2;
     ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 2;
+    ctx.shadowOffsetY = 1;
 
-    ctx.fillStyle = item.textColor || (isLightBg ? '#1f0d04' : '#ffffff');
+    ctx.fillStyle = item.textColor || (isLightBg ? '#120501' : '#ffffff');
     ctx.fillText(displayLabel, 0, 0);
 
     ctx.restore();
     ctx.restore();
   });
 
-  // Outer brass inlay hairline ring on wheel face
+  // Double golden rim rings with decorative gold studs around perimeter
   ctx.save();
   ctx.beginPath();
   ctx.arc(cx, cy, radius * 0.975, 0, Math.PI * 2);
-  ctx.strokeStyle = 'rgba(232, 185, 92, 0.65)';
-  ctx.lineWidth = 6;
+  ctx.strokeStyle = '#ffd700';
+  ctx.lineWidth = 7;
   ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius * 0.945, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(255, 245, 180, 0.55)';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+
+  // Decorative gold studs on face edge
+  const studCount = Math.max(16, count * 2);
+  for (let s = 0; s < studCount; s++) {
+    const sAngle = (s / studCount) * Math.PI * 2;
+    const sx = cx + Math.cos(sAngle) * (radius * 0.975);
+    const sy = cy + Math.sin(sAngle) * (radius * 0.975);
+    ctx.fillStyle = '#fff0aa';
+    ctx.beginPath();
+    ctx.arc(sx, sy, 7, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#855900';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
   ctx.restore();
 
   const texture = new THREE.CanvasTexture(canvas);
@@ -159,65 +171,98 @@ export function createCenterHubTexture(maxAnisotropy: number = 4): THREE.CanvasT
   const cx = size / 2;
   const cy = size / 2;
 
-  // Deep festive crimson lacquer background
-  const grad = ctx.createRadialGradient(cx - 35, cy - 45, 16, cx, cy, size * 0.48);
-  grad.addColorStop(0, '#dc2f2f');
-  grad.addColorStop(0.55, '#a81818');
-  grad.addColorStop(1, '#680b0b');
-  ctx.fillStyle = grad;
+  // Outer gold rim gradient
+  const outerGrad = ctx.createRadialGradient(cx - 30, cy - 30, 100, cx, cy, size * 0.49);
+  outerGrad.addColorStop(0, '#ffe599');
+  outerGrad.addColorStop(0.5, '#d4af37');
+  outerGrad.addColorStop(1, '#8c6718');
+  ctx.fillStyle = outerGrad;
   ctx.beginPath();
   ctx.arc(cx, cy, size * 0.49, 0, Math.PI * 2);
   ctx.fill();
 
-  // Inner embossed gold ring
+  // Deep festive crimson lacquer inner disk
+  const grad = ctx.createRadialGradient(cx - 35, cy - 45, 16, cx, cy, size * 0.42);
+  grad.addColorStop(0, '#f23f3f');
+  grad.addColorStop(0.45, '#c51d24');
+  grad.addColorStop(0.85, '#850f15');
+  grad.addColorStop(1, '#500508');
+  ctx.fillStyle = grad;
   ctx.beginPath();
-  ctx.arc(cx, cy, size * 0.42, 0, Math.PI * 2);
-  ctx.strokeStyle = '#f2c96d';
-  ctx.lineWidth = 8;
-  ctx.stroke();
+  ctx.arc(cx, cy, size * 0.43, 0, Math.PI * 2);
+  ctx.fill();
 
-  // Golden gift icon above "GIRAR" (matching reference image!)
+  // Elegant inner gold filigree ring
+  ctx.beginPath();
+  ctx.arc(cx, cy, size * 0.38, 0, Math.PI * 2);
+  ctx.strokeStyle = '#ffd97d';
+  ctx.lineWidth = 6;
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
+  ctx.shadowBlur = 8;
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // Star points around inner border
+  const starCount = 12;
+  for (let i = 0; i < starCount; i++) {
+    const angle = (i / starCount) * Math.PI * 2;
+    const sx = cx + Math.cos(angle) * (size * 0.38);
+    const sy = cy + Math.sin(angle) * (size * 0.38);
+    ctx.fillStyle = '#fff4cc';
+    ctx.beginPath();
+    ctx.arc(sx, sy, 4.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Golden gift icon above "GIRAR" with rich drop shadow
   ctx.save();
-  ctx.translate(cx, cy - 46);
+  ctx.translate(cx, cy - 44);
   ctx.fillStyle = '#ffd97d';
-  ctx.strokeStyle = '#5c1008';
+  ctx.strokeStyle = '#3d0704';
   ctx.lineWidth = 4;
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+  ctx.shadowBlur = 12;
 
   // Gift box body
-  roundRect(ctx, -34, -14, 68, 50, 7);
+  roundRect(ctx, -32, -12, 64, 48, 8);
   ctx.fill();
   ctx.stroke();
 
-  // Gift box lid
-  roundRect(ctx, -40, -28, 80, 18, 6);
+  // Gift box lid (slightly wider with overhang)
+  roundRect(ctx, -38, -26, 76, 18, 6);
   ctx.fill();
   ctx.stroke();
 
-  // Red ribbon vertical & horizontal
+  // Satin crimson ribbon cross
   ctx.fillStyle = '#a81818';
-  ctx.fillRect(-8, -28, 16, 64);
-  ctx.fillRect(-34, 4, 68, 12);
+  ctx.fillRect(-7, -26, 14, 62);
+  ctx.fillRect(-32, 2, 64, 12);
 
-  // Gift bow loops
-  ctx.strokeStyle = '#ffd97d';
-  ctx.lineWidth = 7;
+  // Sparkly golden gift bow loops
+  ctx.strokeStyle = '#fff1a8';
+  ctx.lineWidth = 6.5;
   ctx.beginPath();
-  ctx.ellipse(-15, -36, 15, 9, -0.4, 0, Math.PI * 2);
+  ctx.ellipse(-14, -34, 14, 8, -0.4, 0, Math.PI * 2);
   ctx.stroke();
   ctx.beginPath();
-  ctx.ellipse(15, -36, 15, 9, 0.4, 0, Math.PI * 2);
+  ctx.ellipse(14, -34, 14, 8, 0.4, 0, Math.PI * 2);
   ctx.stroke();
   ctx.restore();
 
-  // "GIRAR" bold festive typography
+  // "GIRAR" bold festive typography with 3D embossed styling
   ctx.save();
-  ctx.font = '800 66px "Fraunces", Georgia, serif';
+  ctx.font = '800 62px "Fraunces", Georgia, serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.shadowColor = 'rgba(25, 3, 3, 0.85)';
-  ctx.shadowBlur = 10;
-  ctx.shadowOffsetY = 4;
-  ctx.fillStyle = '#fff8ea';
+  
+  // Dark backdrop stroke for clarity
+  ctx.lineWidth = 6;
+  ctx.strokeStyle = '#4a0808';
+  ctx.fillStyle = '#fffdf5';
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+  ctx.shadowBlur = 14;
+  ctx.shadowOffsetY = 5;
+  ctx.strokeText('GIRAR', cx, cy + 54);
   ctx.fillText('GIRAR', cx, cy + 54);
   ctx.restore();
 
@@ -277,6 +322,92 @@ export function createWoodGrainTexture(
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.wrapS = THREE.RepeatWrapping;
   tex.wrapT = THREE.RepeatWrapping;
+  tex.anisotropy = maxAnisotropy;
+  return tex;
+}
+
+export function createTreeRingsTexture(maxAnisotropy: number = 4): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d')!;
+
+  const cx = 256;
+  const cy = 256;
+  const maxR = 246;
+
+  // 1. Radial gradient from rich amber heartwood to lighter sapwood
+  const woodGrad = ctx.createRadialGradient(cx, cy, 10, cx, cy, maxR);
+  woodGrad.addColorStop(0, '#78431e');
+  woodGrad.addColorStop(0.25, '#995a28');
+  woodGrad.addColorStop(0.65, '#ba7b42');
+  woodGrad.addColorStop(0.88, '#d4a268');
+  woodGrad.addColorStop(0.96, '#8f562b');
+  woodGrad.addColorStop(1.0, '#3a1e0d');
+  ctx.fillStyle = woodGrad;
+  ctx.fillRect(0, 0, 512, 512);
+
+  // 2. Realistic concentric annual tree growth rings with natural organic waviness
+  const ringCount = 38;
+  for (let r = 1; r <= ringCount; r++) {
+    const baseRadius = (r / ringCount) * (maxR - 12);
+    ctx.beginPath();
+    const steps = 72;
+    for (let s = 0; s <= steps; s++) {
+      const angle = (s / steps) * Math.PI * 2;
+      // Natural organic wobble in wood grain rings
+      const wobble = Math.sin(angle * 3 + r * 0.4) * 2.8 + Math.cos(angle * 5 - r * 0.3) * 1.8;
+      const curR = Math.max(3, baseRadius + wobble);
+      const px = cx + Math.cos(angle) * curR;
+      const py = cy + Math.sin(angle) * curR;
+      if (s === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.strokeStyle = r % 4 === 0 ? 'rgba(56, 26, 9, 0.48)' : 'rgba(72, 36, 14, 0.28)';
+    ctx.lineWidth = r % 4 === 0 ? 3.0 : 1.8;
+    ctx.stroke();
+  }
+
+  // 3. Radial drying cracks / fissures radiating from heartwood
+  const crackAngles = [0.42, 1.35, 2.78, 4.12, 5.25];
+  crackAngles.forEach((baseAngle) => {
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(baseAngle) * 18, cy + Math.sin(baseAngle) * 18);
+    const crackLen = maxR * (0.65 + (Math.sin(baseAngle * 10) * 0.2));
+    let curX = cx + Math.cos(baseAngle) * 18;
+    let curY = cy + Math.sin(baseAngle) * 18;
+    for (let step = 1; step <= 8; step++) {
+      const dist = (step / 8) * crackLen;
+      const a = baseAngle + (Math.sin(step * 1.5) * 0.08);
+      curX = cx + Math.cos(a) * dist;
+      curY = cy + Math.sin(a) * dist;
+      ctx.lineTo(curX, curY);
+    }
+    ctx.strokeStyle = 'rgba(28, 11, 4, 0.72)';
+    ctx.lineWidth = 3.5;
+    ctx.stroke();
+
+    ctx.strokeStyle = 'rgba(45, 18, 7, 0.42)';
+    ctx.lineWidth = 1.6;
+    ctx.stroke();
+  });
+
+  // 4. Center tree pith knot
+  ctx.fillStyle = '#48240f';
+  ctx.beginPath();
+  ctx.arc(cx, cy, 9, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 5. Rough outer bark rim border
+  ctx.strokeStyle = '#281307';
+  ctx.lineWidth = 18;
+  ctx.beginPath();
+  ctx.arc(cx, cy, maxR - 4, 0, Math.PI * 2);
+  ctx.stroke();
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = maxAnisotropy;
   return tex;
 }

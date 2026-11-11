@@ -6,10 +6,13 @@ import {
   createGiftBox,
   createGnome,
   createReindeer,
+  createSnowman,
   GnomeRig,
   ReindeerRig,
+  SnowmanRig,
   updateGnomeAnimation,
   updateReindeerIdle,
+  updateSnowmanIdle,
 } from '../three/characters';
 import { createWinterEnvironment, groundHeightAt } from '../three/environment';
 import { createSignpost3D } from '../three/signboardModel';
@@ -18,6 +21,7 @@ import {
   createGiftWrapTexture,
   createSoftGlowTexture,
   createStripedSockTexture,
+  createTreeRingsTexture,
   createWoodGrainTexture,
 } from '../three/textures';
 import { createWheelAssembly } from '../three/wheelModel';
@@ -146,8 +150,8 @@ export function ChristmasScene3D({
     renderer.domElement.addEventListener('webglcontextlost', onContextLost);
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x09172a);
-    scene.fog = new THREE.FogExp2(0x0d2138, 0.028);
+    scene.background = new THREE.Color(0x030914);
+    scene.fog = new THREE.FogExp2(0x040c1a, 0.038);
 
     // Studio environment reflection for brushed brass & satin ribbons
     const pmremGenerator = new THREE.PMREMGenerator(renderer);
@@ -214,20 +218,21 @@ export function ChristmasScene3D({
     rimLight.position.set(-5.5, 6.5, -6.5);
     scene.add(rimLight);
 
-    const wheelWarmGlow = new THREE.PointLight(0xffb85c, 2.2, 9.5, 1.6);
-    wheelWarmGlow.position.set(0.0, 3.6, 2.6);
+    const wheelWarmGlow = new THREE.PointLight(0xfff5e0, 4.5, 12.0, 1.3);
+    wheelWarmGlow.position.set(0.0, 3.5, 2.8);
     scene.add(wheelWarmGlow);
 
     // 3. Procedural Textures
     const maxAniso = renderer.capabilities.getMaxAnisotropy();
     const woodTex = createWoodGrainTexture('#5c3419', '#301708', maxAniso);
+    const treeRingsTex = createTreeRingsTexture(maxAniso);
     const sockTex = createStripedSockTexture(maxAniso);
     const giftWrapTex = createGiftWrapTexture(maxAniso);
     const glowTex = createSoftGlowTexture();
     const contactShadowTex = createContactShadowTexture();
 
-    // 4. Environment (Snow Terrain, Aurora Sky, Pines, Ladder, Log, Stump, Fairy Lights, 3D Snow)
-    const envAssets = createWinterEnvironment(contactShadowTex, woodTex, glowTex, isSoftwareGl);
+    // 4. Environment (Snow Terrain, Aurora Sky, Pines, Ladder, Bucket, Tilted Stump, Fairy Lights, 3D Snow)
+    const envAssets = createWinterEnvironment(contactShadowTex, woodTex, glowTex, treeRingsTex, isSoftwareGl);
     scene.add(envAssets.group);
 
     // 5. 3D Natalina Wheel Assembly Integrated into the Snow
@@ -235,6 +240,7 @@ export function ChristmasScene3D({
       itemsRef.current,
       woodTex,
       contactShadowTex,
+      glowTex,
       maxAniso,
       isSoftwareGl
     );
@@ -260,50 +266,22 @@ export function ChristmasScene3D({
       scene.add(sh);
     };
 
-    // (a) Ladder Pusher Gnome on top of the left wooden ladder (behind the wheel)
-    const pusherGnome = createGnome(
-      {
-        role: 'pusher',
-        hatPrimaryHex: 0x1e6f3d,
-        tunicHex: 0x1e6f3d,
-        holdsBrush: true,
-        phaseOffset: 0,
-      },
-      sockTex,
-      isSoftwareGl
-    );
-    pusherGnome.baseY = groundHeightAt(-1.95, -0.48) + 3.28;
-    pusherGnome.group.position.set(-1.52, pusherGnome.baseY, -0.42);
-    pusherGnome.group.rotation.y = 0.52;
-    pusherGnome.group.scale.setScalar(1.08);
-    scene.add(pusherGnome.group);
-    gnomes.push(pusherGnome);
-
-    // (b) Upper-Right Rim Watcher Gnome perched cheerfully on right side of wheel arch
+    // (a) Red-Hat Elf standing in full view on top of the wooden ladder beside the wheel
+    const ladderX = 2.62;
+    const ladderZ = -0.38;
+    const ladderTopX = ladderX - 0.26;
+    const ladderTopY = groundHeightAt(ladderX, ladderZ) + 0.12 + 3.20;
     const rimGnome = createGnome(
       { role: 'rimWatcher', hatPrimaryHex: 0xc92228, tunicHex: 0x1e6f3d, phaseOffset: 1.2 },
       sockTex,
       isSoftwareGl
     );
-    rimGnome.baseY = wheelY + 3.85;
-    rimGnome.group.position.set(wheelX + 1.92, rimGnome.baseY, -0.05);
-    rimGnome.group.rotation.y = -0.35;
-    rimGnome.group.scale.setScalar(1.04);
+    rimGnome.baseY = ladderTopY;
+    rimGnome.group.position.set(ladderTopX, ladderTopY, ladderZ + 0.08);
+    rimGnome.group.rotation.y = -0.42;
+    rimGnome.group.scale.setScalar(1.10);
     scene.add(rimGnome.group);
     gnomes.push(rimGnome);
-
-    // (b2) Peeking Gnome behind the right rim of the wheel
-    const peekingGnome = createGnome(
-      { role: 'rimWatcher', hatPrimaryHex: 0x1e6f3d, tunicHex: 0x1e6f3d, phaseOffset: 0.9 },
-      sockTex,
-      isSoftwareGl
-    );
-    peekingGnome.baseY = wheelY + 1.25;
-    peekingGnome.group.position.set(wheelX + 2.05, peekingGnome.baseY, -0.32);
-    peekingGnome.group.rotation.y = -0.65;
-    peekingGnome.group.scale.setScalar(0.92);
-    scene.add(peekingGnome.group);
-    gnomes.push(peekingGnome);
 
     // (c) Ground Left Helper Gnome beside lower-left of wheel
     const groundLeftX = -1.8;
@@ -321,14 +299,14 @@ export function ChristmasScene3D({
     addGnomeShadow(groundLeftX, groundLeftZ);
     gnomes.push(groundHelperGnome);
 
-    // (d) Bearded Elder Gnome sitting on the snowy wooden log (bottom-left)
-    const elderX = -4.1;
-    const elderZ = 2.12;
+    // (d) Bearded Elder Gnome standing on the Rustic Tree Trunk (bottom-left)
+    const elderX = -4.2;
+    const elderZ = 2.05;
     const elderGnome = createGnome(
       {
         role: 'elderOnLog',
         hasBeard: true,
-        seated: true,
+        seated: false,
         hatPrimaryHex: 0x1e6f3d,
         tunicHex: 0x1e6f3d,
         phaseOffset: 2.1,
@@ -336,16 +314,19 @@ export function ChristmasScene3D({
       sockTex,
       isSoftwareGl
     );
-    elderGnome.baseY = groundHeightAt(elderX, elderZ) + 0.52;
-    elderGnome.group.position.set(elderX, elderGnome.baseY, elderZ);
+    // Tree stump cut face is tilted forward with tree rings visible
+    const stumpTopY = groundHeightAt(elderX, elderZ) + 0.56;
+    elderGnome.baseY = stumpTopY;
+    elderGnome.group.position.set(elderX, stumpTopY, elderZ - 0.12);
+    elderGnome.group.rotation.x = 0.22;
     elderGnome.group.rotation.y = 0.38;
-    elderGnome.group.scale.setScalar(1.1);
+    elderGnome.group.scale.setScalar(1.08);
     scene.add(elderGnome.group);
     gnomes.push(elderGnome);
 
-    // (e) Standing Cheerful Elf on Top of the Tree Stump (bottom-right of wheel)
-    const stumpX = 2.47;
-    const stumpZ = 1.75;
+    // (e) Standing Cheerful Elf on Top of the Wooden Bucket (bottom-right of wheel)
+    const rightGnomeX = 2.47;
+    const rightGnomeZ = 1.75;
     const stumpStandingGnome = createGnome(
       {
         role: 'stumpStanding',
@@ -357,37 +338,34 @@ export function ChristmasScene3D({
       sockTex,
       isSoftwareGl
     );
-    const stumpTopY = groundHeightAt(stumpX, stumpZ) + 0.55;
-    stumpStandingGnome.baseY = stumpTopY;
-    stumpStandingGnome.group.position.set(stumpX, stumpStandingGnome.baseY, stumpZ);
+    // Bucket height is 0.52 with level wooden top
+    const bucketTopY = groundHeightAt(rightGnomeX, rightGnomeZ) + 0.52;
+    stumpStandingGnome.baseY = bucketTopY;
+    stumpStandingGnome.group.position.set(rightGnomeX, bucketTopY, rightGnomeZ);
+    stumpStandingGnome.group.rotation.x = 0;
     stumpStandingGnome.group.rotation.y = -0.32;
     stumpStandingGnome.group.scale.setScalar(1.08);
     scene.add(stumpStandingGnome.group);
     gnomes.push(stumpStandingGnome);
 
-    // (f) Standing Friend Gnome next to the stump (bottom-right)
-    const friendX = 3.57;
-    const friendZ = 1.92;
-    const stumpFriendGnome = createGnome(
-      { role: 'stumpFriend', hatPrimaryHex: 0x1e6f3d, tunicHex: 0x22703e, phaseOffset: 2.8 },
-      sockTex,
-      isSoftwareGl
-    );
-    stumpFriendGnome.baseY = groundHeightAt(friendX, friendZ);
-    stumpFriendGnome.group.position.set(friendX, stumpFriendGnome.baseY, friendZ);
-    stumpFriendGnome.group.rotation.y = -0.46;
-    stumpFriendGnome.group.scale.setScalar(1.08);
-    scene.add(stumpFriendGnome.group);
-    addGnomeShadow(friendX, friendZ);
-    gnomes.push(stumpFriendGnome);
+    // (f) 3D Animated Festive Snowman (Boneco de Neve) next to stump & candy canes
+    const snowmanX = 3.57;
+    const snowmanZ = 1.92;
+    const snowman = createSnowman(isSoftwareGl);
+    snowman.baseY = groundHeightAt(snowmanX, snowmanZ);
+    snowman.group.position.set(snowmanX, snowman.baseY, snowmanZ);
+    snowman.group.rotation.y = -0.42;
+    snowman.group.scale.setScalar(1.22);
+    scene.add(snowman.group);
+    addGnomeShadow(snowmanX, snowmanZ);
 
     // 7. Prominent Visible Reindeers in Left and Right Clearings
     const reindeerList: ReindeerRig[] = [];
-    const deer1X = -3.85;
+    const deer1X = -4.65;
     const deer1Z = 0.35;
     const deer1 = createReindeer(true, 0.5, isSoftwareGl);
     deer1.group.position.set(deer1X, groundHeightAt(deer1X, deer1Z), deer1Z);
-    deer1.group.rotation.y = 0.38;
+    deer1.group.rotation.y = 0.55;
     deer1.group.scale.setScalar(1.42);
     scene.add(deer1.group);
     addGnomeShadow(deer1X, deer1Z);
@@ -554,6 +532,7 @@ export function ChristmasScene3D({
 
       // Update sky aurora, twinkling lights, and 3D snow
       envAssets.updateEnvironment(elapsed, delta);
+      wheel.updateAnimation(elapsed, spinPhaseRef.current === 'spinning' || spinPhaseRef.current === 'pushing');
 
       // Update center 3D "GIRAR" button hover/press spring
       const isHovered = (hubHover || hubHoverExternalRef.current) && spinPhaseRef.current === 'idle';
@@ -568,7 +547,7 @@ export function ChristmasScene3D({
         pushElapsed += delta;
         if (!spinImpulseApplied && pushElapsed >= 0.21) {
           spinImpulseApplied = true;
-          maxSpinVelocity = 13.5 + Math.random() * 5.8;
+          maxSpinVelocity = 17.5 + Math.random() * 5.5;
           angularVelocity = maxSpinVelocity;
           soundEngine.playSpinStart();
           const count = Math.max(1, itemsRef.current.length);
@@ -586,8 +565,8 @@ export function ChristmasScene3D({
           callbacksRef.current.onPhaseChange('spinning');
         }
       } else if (phase === 'spinning') {
-        angularVelocity *= Math.exp(-0.56 * delta);
-        angularVelocity = Math.max(0, angularVelocity - 0.34 * delta);
+        angularVelocity *= Math.exp(-0.26 * delta);
+        angularVelocity = Math.max(0, angularVelocity - 0.16 * delta);
 
         rotorAngle += angularVelocity * delta;
         wheel.rotorGroup.rotation.z = rotorAngle;
@@ -670,11 +649,12 @@ export function ChristmasScene3D({
       pointerAngle = THREE.MathUtils.clamp(pointerAngle, -0.68, 0.25);
       wheel.pointerPivot.rotation.z = pointerAngle;
 
-      // Update all 6 Gnomes & Reindeers
+      // Update Gnomes, Snowman & Reindeers
       const speedRatio = THREE.MathUtils.clamp(angularVelocity / maxSpinVelocity, 0, 1);
       for (let i = 0; i < gnomes.length; i++) {
         updateGnomeAnimation(gnomes[i], elapsed, spinPhaseRef.current, pushElapsed, speedRatio);
       }
+      updateSnowmanIdle(snowman, elapsed, spinPhaseRef.current);
       for (let i = 0; i < reindeerList.length; i++) {
         updateReindeerIdle(reindeerList[i], elapsed);
       }

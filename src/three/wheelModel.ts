@@ -9,6 +9,7 @@ export interface WheelAssembly {
   hubButtonGroup: THREE.Group;
   hubClickTarget: THREE.Mesh;
   wheelRadius: number;
+  updateAnimation: (elapsed: number, isSpinning: boolean) => void;
   rebuildSlices: (items: WheelItem[]) => void;
   dispose: () => void;
 }
@@ -17,6 +18,7 @@ export function createWheelAssembly(
   initialItems: WheelItem[],
   woodTex: THREE.Texture,
   contactShadowTex: THREE.Texture,
+  glowTex: THREE.Texture,
   maxAnisotropy: number,
   isSoftwareGl: boolean
 ): WheelAssembly {
@@ -41,15 +43,15 @@ export function createWheelAssembly(
   });
 
   const brushedBrassMat = new THREE.MeshStandardMaterial({
-    color: 0xf0c465,
-    roughness: 0.26,
-    metalness: 0.86,
+    color: 0xffd700,
+    roughness: 0.22,
+    metalness: 0.92,
   });
 
   const crimsonRimMat = new THREE.MeshStandardMaterial({
-    color: 0x8f1818,
-    roughness: 0.45,
-    metalness: 0.14,
+    color: 0x9e1212,
+    roughness: 0.35,
+    metalness: 0.22,
   });
 
   const snowCapMat = new THREE.MeshStandardMaterial({
@@ -211,7 +213,95 @@ export function createWheelAssembly(
   crimsonTrimTorus.position.z = wheelDepth / 2 + 0.02;
   stationaryFrame.add(crimsonTrimTorus);
 
-  // Snow resting naturally along the top arc of the stationary rim (matching reference image!)
+  // 2b. 24 Animated Festive Marquee LED Light Bulbs (Enlarged + Volumetric Light Halos!)
+  const marqueeBulbGroup = new THREE.Group();
+  stationaryFrame.add(marqueeBulbGroup);
+
+  const bulbCount = 24;
+  const bulbRadius = wheelRadius + 0.175;
+  const bulbColors = [
+    0xff1744, // Vivid Christmas Red
+    0xffd700, // Bright Gold
+    0x00e676, // Emerald Green
+    0x00e5ff, // Cyan Blue
+    0xff4081, // Vivid Pink
+    0xfff59d, // Warm White
+    0xff9100, // Orange
+    0xd500f9, // Purple Light
+  ];
+
+  const bulbSocketGeo = new THREE.CylinderGeometry(0.042, 0.052, 0.06, 12);
+  bulbSocketGeo.rotateX(Math.PI / 2);
+  const bulbGlassGeo = new THREE.SphereGeometry(0.082, 16, 12); // Prominent enlarged bulbs!
+
+  interface BulbItem {
+    mesh: THREE.Mesh;
+    mat: THREE.MeshStandardMaterial;
+    halo: THREE.Sprite;
+    baseColor: number;
+    phase: number;
+  }
+  const marqueeBulbs: BulbItem[] = [];
+
+  for (let b = 0; b < bulbCount; b++) {
+    const angle = (b / bulbCount) * Math.PI * 2;
+    // Leave room near top 12 o'clock for the golden clapper mount
+    const angleFromTop = Math.abs(Math.atan2(Math.sin(angle - Math.PI / 2), Math.cos(angle - Math.PI / 2)));
+    if (angleFromTop < 0.22) continue;
+
+    const socket = new THREE.Mesh(bulbSocketGeo, brushedBrassMat);
+    socket.position.set(
+      Math.cos(angle) * bulbRadius,
+      Math.sin(angle) * bulbRadius,
+      wheelDepth / 2 + 0.02
+    );
+    socket.rotation.z = angle - Math.PI / 2;
+    marqueeBulbGroup.add(socket);
+
+    const baseColor = bulbColors[b % bulbColors.length];
+    const bulbMat = new THREE.MeshStandardMaterial({
+      color: baseColor,
+      emissive: baseColor,
+      emissiveIntensity: 3.2,
+      roughness: 0.1,
+      metalness: 0.1,
+    });
+    const bulbMesh = new THREE.Mesh(bulbGlassGeo, bulbMat);
+    bulbMesh.position.set(
+      Math.cos(angle) * bulbRadius,
+      Math.sin(angle) * bulbRadius,
+      wheelDepth / 2 + 0.065
+    );
+    marqueeBulbGroup.add(bulbMesh);
+
+    // Volumetric additive light halo sprite attached to each bulb!
+    const haloMat = new THREE.SpriteMaterial({
+      map: glowTex,
+      color: baseColor,
+      transparent: true,
+      opacity: 0.88,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+    const halo = new THREE.Sprite(haloMat);
+    halo.scale.set(0.48, 0.48, 0.48);
+    halo.position.set(
+      Math.cos(angle) * bulbRadius,
+      Math.sin(angle) * bulbRadius,
+      wheelDepth / 2 + 0.085
+    );
+    marqueeBulbGroup.add(halo);
+
+    marqueeBulbs.push({
+      mesh: bulbMesh,
+      mat: bulbMat,
+      halo,
+      baseColor,
+      phase: b * 0.45,
+    });
+  }
+
+  // Snow resting naturally along top arc of stationary rim
   for (let i = -8; i <= 8; i++) {
     if (Math.abs(i) <= 1) continue; // Leave room at 12 o'clock for golden pointer shield
     const angle = Math.PI / 2 + i * 0.088;
@@ -224,7 +314,7 @@ export function createWheelAssembly(
     stationaryFrame.add(puff);
   }
 
-  // Heavy snow blanket dusting upper left rim where the brush gnome cleans
+  // Heavy snow blanket dusting upper left rim where brush gnome cleans
   const snowBrushPatch = new THREE.Mesh(
     new THREE.SphereGeometry(0.32, 14, 10),
     snowCapMat
@@ -234,48 +324,173 @@ export function createWheelAssembly(
   snowBrushPatch.rotation.z = 0.65;
   stationaryFrame.add(snowBrushPatch);
 
-  // Ornate Golden Pointer / Clapper at 12 o'clock matching the reference photo
-  const pointerMount = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.14, 0.16, 0.12, 16),
-    brushedBrassMat
-  );
-  pointerMount.rotation.x = Math.PI / 2;
-  pointerMount.position.set(0, wheelRadius + 0.14, wheelDepth / 2 + 0.08);
+  // Ornate Golden Pointer / Clapper with Ruby Gem & Star Crest at 12 o'clock
+  const pointerMount = new THREE.Group();
+  pointerMount.position.set(0, wheelRadius + 0.15, wheelDepth / 2 + 0.08);
   stationaryFrame.add(pointerMount);
 
+  // Brass mount collar
+  const mountCollar = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.15, 0.18, 0.14, 20),
+    brushedBrassMat
+  );
+  mountCollar.rotation.x = Math.PI / 2;
+  pointerMount.add(mountCollar);
+
+  // Golden 5-Pointed Star Crest crowning top of mount
+  const starShape = new THREE.Shape();
+  const starPoints = 5;
+  for (let i = 0; i < starPoints * 2; i++) {
+    const r = i % 2 === 0 ? 0.15 : 0.065;
+    const a = (i / (starPoints * 2)) * Math.PI * 2 - Math.PI / 2;
+    const x = Math.cos(a) * r;
+    const y = Math.sin(a) * r;
+    if (i === 0) starShape.moveTo(x, y);
+    else starShape.lineTo(x, y);
+  }
+  starShape.closePath();
+
+  const starGeo = new THREE.ExtrudeGeometry(starShape, {
+    depth: 0.04,
+    bevelEnabled: true,
+    bevelThickness: 0.015,
+    bevelSize: 0.015,
+    bevelSegments: 2,
+  });
+  const starCrest = new THREE.Mesh(starGeo, brushedBrassMat);
+  starCrest.position.set(0, 0.12, 0.02);
+  pointerMount.add(starCrest);
+
   const pointerPivot = new THREE.Group();
-  pointerPivot.position.set(0, wheelRadius + 0.14, wheelDepth / 2 + 0.12);
+  pointerPivot.position.set(0, wheelRadius + 0.15, wheelDepth / 2 + 0.14);
   stationaryFrame.add(pointerPivot);
 
-  // Extruded ornate teardrop/shield pointer with decorative cutout
-  const shieldShape = new THREE.Shape();
-  shieldShape.moveTo(0, 0.22);
-  shieldShape.bezierCurveTo(0.24, 0.22, 0.26, -0.02, 0.16, -0.22);
-  shieldShape.lineTo(0, -0.52);
-  shieldShape.lineTo(-0.16, -0.22);
-  shieldShape.bezierCurveTo(-0.26, -0.02, -0.24, 0.22, 0, 0.22);
+  // Dark High-Contrast Outline Material (obsidian bronze-black)
+  const darkPointerOutlineMat = new THREE.MeshStandardMaterial({
+    color: 0x0f1115,
+    roughness: 0.42,
+    metalness: 0.28,
+  });
 
-  // Inner cutout hole in pointer (like the photo!)
-  const holePath = new THREE.Path();
-  holePath.moveTo(0, 0.1);
-  holePath.bezierCurveTo(0.1, 0.1, 0.11, -0.04, 0.06, -0.14);
-  holePath.lineTo(0, -0.28);
-  holePath.lineTo(-0.06, -0.14);
-  holePath.bezierCurveTo(-0.11, -0.04, -0.1, 0.1, 0, 0.1);
-  shieldShape.holes.push(holePath);
+  // 1. Backing Dark Outline Shape (dilated perimeter framing the entire arrow)
+  const outlineShape = new THREE.Shape();
+  outlineShape.moveTo(0, 0.315);
+  outlineShape.bezierCurveTo(0.165, 0.27, 0.15, -0.015, 0.10, -0.215);
+  outlineShape.lineTo(0, -0.665); // sharp dark contour extending beyond gold tip
+  outlineShape.lineTo(-0.10, -0.215);
+  outlineShape.bezierCurveTo(-0.15, -0.015, -0.165, 0.27, 0, 0.315);
 
-  const shieldGeo = new THREE.ExtrudeGeometry(shieldShape, {
-    depth: 0.06,
+  const outlineGeo = new THREE.ExtrudeGeometry(outlineShape, {
+    depth: 0.056,
+    bevelEnabled: true,
+    bevelSegments: 2,
+    steps: 1,
+    bevelSize: 0.014,
+    bevelThickness: 0.014,
+  });
+  const outlineMesh = new THREE.Mesh(outlineGeo, darkPointerOutlineMat);
+  outlineMesh.position.z = -0.030;
+  outlineMesh.castShadow = !isSoftwareGl;
+  pointerPivot.add(outlineMesh);
+
+  // 2. Extruded ornate clapper arrow shape (brushed gold brass)
+  const arrowShape = new THREE.Shape();
+  arrowShape.moveTo(0, 0.28);
+  arrowShape.bezierCurveTo(0.13, 0.24, 0.12, -0.02, 0.075, -0.22);
+  arrowShape.lineTo(0, -0.62); // sleek sharp tip pointing straight down
+  arrowShape.lineTo(-0.075, -0.22);
+  arrowShape.bezierCurveTo(-0.12, -0.02, -0.13, 0.24, 0, 0.28);
+
+  // Inner cutout for ruby crystal inlay (slim profile)
+  const rubyHole = new THREE.Path();
+  rubyHole.moveTo(0, 0.16);
+  rubyHole.bezierCurveTo(0.06, 0.12, 0.055, -0.04, 0.035, -0.16);
+  rubyHole.lineTo(0, -0.36);
+  rubyHole.lineTo(-0.035, -0.16);
+  rubyHole.bezierCurveTo(-0.055, -0.04, -0.06, 0.12, 0, 0.16);
+  arrowShape.holes.push(rubyHole);
+
+  const arrowGeo = new THREE.ExtrudeGeometry(arrowShape, {
+    depth: 0.045,
     bevelEnabled: true,
     bevelSegments: 3,
     steps: 1,
-    bevelSize: 0.025,
-    bevelThickness: 0.025,
+    bevelSize: 0.016,
+    bevelThickness: 0.016,
   });
-  const shieldMesh = new THREE.Mesh(shieldGeo, brushedBrassMat);
-  shieldMesh.position.z = -0.03;
-  shieldMesh.castShadow = !isSoftwareGl;
-  pointerPivot.add(shieldMesh);
+  const arrowMesh = new THREE.Mesh(arrowGeo, brushedBrassMat);
+  arrowMesh.position.z = -0.020;
+  arrowMesh.castShadow = !isSoftwareGl;
+  pointerPivot.add(arrowMesh);
+
+  // 3. Front Dark Outline Bezel Rim along front face of the arrow
+  const frontOutlineShape = new THREE.Shape();
+  frontOutlineShape.moveTo(0, 0.292);
+  frontOutlineShape.bezierCurveTo(0.140, 0.250, 0.128, -0.018, 0.082, -0.22);
+  frontOutlineShape.lineTo(0, -0.635);
+  frontOutlineShape.lineTo(-0.082, -0.22);
+  frontOutlineShape.bezierCurveTo(-0.128, -0.018, -0.140, 0.250, 0, 0.292);
+
+  const innerGoldFaceHole = new THREE.Path();
+  innerGoldFaceHole.moveTo(0, 0.262);
+  innerGoldFaceHole.bezierCurveTo(0.116, 0.224, 0.106, -0.018, 0.066, -0.22);
+  innerGoldFaceHole.lineTo(0, -0.585);
+  innerGoldFaceHole.lineTo(-0.066, -0.22);
+  innerGoldFaceHole.bezierCurveTo(-0.106, -0.018, -0.116, 0.224, 0, 0.262);
+  frontOutlineShape.holes.push(innerGoldFaceHole);
+
+  const frontOutlineGeo = new THREE.ExtrudeGeometry(frontOutlineShape, {
+    depth: 0.012,
+    bevelEnabled: false,
+  });
+  const frontOutlineMesh = new THREE.Mesh(frontOutlineGeo, darkPointerOutlineMat);
+  frontOutlineMesh.position.z = 0.024;
+  pointerPivot.add(frontOutlineMesh);
+
+  // Dark Bezel Ring framing the ruby hole
+  const rubyDarkBezel = new THREE.Mesh(
+    new THREE.TorusGeometry(0.066, 0.010, 8, 20),
+    darkPointerOutlineMat
+  );
+  rubyDarkBezel.position.set(0, -0.04, 0.012);
+  pointerPivot.add(rubyDarkBezel);
+
+  // Embedded Faceted Glowing Ruby Crystal in center of arrow
+  const rubyMat = new THREE.MeshStandardMaterial({
+    color: 0xff1133,
+    emissive: 0xd90429,
+    emissiveIntensity: 0.75,
+    roughness: 0.12,
+    metalness: 0.2,
+  });
+  const rubyGeo = new THREE.OctahedronGeometry(0.10, 0);
+  rubyGeo.scale(0.55, 1.4, 0.35);
+  const rubyCore = new THREE.Mesh(rubyGeo, rubyMat);
+  rubyCore.position.set(0, -0.04, 0);
+  pointerPivot.add(rubyCore);
+
+  // Glowing Red Tip Gem at arrow tip pointing directly at slice with dark collar
+  const tipGemMat = new THREE.MeshStandardMaterial({
+    color: 0xff002b,
+    emissive: 0xff1744,
+    emissiveIntensity: 0.95,
+    roughness: 0.1,
+  });
+  const tipGem = new THREE.Mesh(new THREE.SphereGeometry(0.032, 10, 10), tipGemMat);
+  tipGem.position.set(0, -0.60, 0.02);
+  pointerPivot.add(tipGem);
+
+  const tipGemCollar = new THREE.Mesh(
+    new THREE.TorusGeometry(0.036, 0.008, 8, 16),
+    darkPointerOutlineMat
+  );
+  tipGemCollar.position.set(0, -0.60, 0.012);
+  pointerPivot.add(tipGemCollar);
+
+  // Dedicated spotlight point light at tip of arrow pointing onto the winning slice
+  const pointerSpotLight = new THREE.PointLight(0xff2244, 2.0, 2.0);
+  pointerSpotLight.position.set(0, -0.62, 0.12);
+  pointerPivot.add(pointerSpotLight);
 
   // 3. Rotating Wheel Rotor (Face Texture + 3D Radial Dividers + Brass Rim Pegs)
   const rotorGroup = new THREE.Group();
@@ -284,8 +499,10 @@ export function createWheelAssembly(
 
   let currentFaceTex: THREE.CanvasTexture | null = null;
   const faceMat = new THREE.MeshStandardMaterial({
-    roughness: 0.62,
-    metalness: 0.05,
+    roughness: 0.28,
+    metalness: 0.0,
+    emissive: 0x000000,
+    emissiveIntensity: 0.0,
   });
   const faceMesh = new THREE.Mesh(new THREE.CircleGeometry(wheelRadius, 80), faceMat);
   faceMesh.receiveShadow = !isSoftwareGl;
@@ -395,6 +612,26 @@ export function createWheelAssembly(
   hubClickTarget.layers.enable(1);
   hubButtonGroup.add(hubClickTarget);
 
+  function updateAnimation(elapsed: number, isSpinning: boolean) {
+    if (isSpinning) {
+      // Fast, high-energy carnival flashing strobe chase while spinning
+      marqueeBulbs.forEach((b) => {
+        const flash = Math.sin(elapsed * 24.0 + b.phase * 2.0);
+        const isOn = flash > 0.0;
+        b.mat.emissiveIntensity = isOn ? 5.2 : 0.05;
+        b.halo.material.opacity = isOn ? 0.96 : 0.02;
+      });
+    } else {
+      // Gentle, festive rhythmic blinking while idle
+      marqueeBulbs.forEach((b) => {
+        const pulse = Math.sin(elapsed * 4.5 + b.phase);
+        const isOn = pulse > 0.15;
+        b.mat.emissiveIntensity = isOn ? 3.6 : 0.12;
+        b.halo.material.opacity = isOn ? 0.85 : 0.05;
+      });
+    }
+  }
+
   function dispose() {
     if (currentFaceTex) currentFaceTex.dispose();
     hubFaceTex.dispose();
@@ -410,6 +647,7 @@ export function createWheelAssembly(
     hubButtonGroup,
     hubClickTarget,
     wheelRadius,
+    updateAnimation,
     rebuildSlices,
     dispose,
   };
