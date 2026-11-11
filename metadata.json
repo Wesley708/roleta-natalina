@@ -1,0 +1,6 @@
+{
+  "name": "Roleta Natalina 3D",
+  "description": "Roleta natalina interativa em 3D integrada a um cenário vivo de neve com duendes animados, renas ao fundo, painel entalhado em madeira rústica e revelação em caixa de presente 3D.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
