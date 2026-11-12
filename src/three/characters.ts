@@ -556,6 +556,7 @@ export function createGnome(
 export function updateGnomeAnimation(
   rig: GnomeRig,
   elapsed: number,
+  delta: number,
   spinPhase: SpinPhase,
   pushTimer: number,
   wheelSpeedRatio: number
@@ -563,17 +564,22 @@ export function updateGnomeAnimation(
   const phase = rig.options.phaseOffset ?? 0;
   const t = elapsed + phase;
   const role = rig.options.role;
+  const dt = Math.min(delta, 0.05);
+  const smooth = 9;
+  const isCheering = spinPhase === 'spinning' || spinPhase === 'revealing' || spinPhase === 'revealed';
 
-  // Dynamic secondary hat tip motion
-  const excitement = spinPhase === 'idle' ? 0.2 : 1.0;
-  rig.hatTipPivot.rotation.z = 0.48 + Math.sin(t * (spinPhase === 'idle' ? 2.2 : 8.5)) * 0.16 * excitement;
+  // Dynamic secondary hat tip motion with gentle wind/bounce responsiveness
+  const excitement = spinPhase === 'idle' ? 0.28 : 1.0;
+  const targetHatZ = 0.44 + Math.sin(t * (spinPhase === 'idle' ? 2.4 : 8.5)) * 0.16 * excitement;
+  const targetHatX = Math.cos(t * (spinPhase === 'idle' ? 1.8 : 6.5)) * 0.08 * excitement;
+  rig.hatTipPivot.rotation.z = THREE.MathUtils.damp(rig.hatTipPivot.rotation.z, targetHatZ, 10, dt);
+  rig.hatTipPivot.rotation.x = THREE.MathUtils.damp(rig.hatTipPivot.rotation.x, targetHatX, 10, dt);
 
   if (role === 'pusher') {
     // Ladder Pusher Gnome - High Energy Wheel Spinning Mechanic
     if (spinPhase === 'pushing') {
       const p = THREE.MathUtils.clamp(pushTimer / 0.42, 0, 1);
       if (p < 0.32) {
-        // Wind-up: Leaning way back, reaching high to grip top rim handle
         const w = p / 0.32;
         const easeWind = Math.pow(w, 2);
         rig.bodyPivot.rotation.z = THREE.MathUtils.lerp(-0.08, 0.24, easeWind);
@@ -581,13 +587,11 @@ export function updateGnomeAnimation(
         rig.headPivot.rotation.x = THREE.MathUtils.lerp(0, -0.22, easeWind);
         rig.headPivot.rotation.y = 0.35;
 
-        // Arms reach straight up and outward (zero belly clipping!)
         rig.leftArmPivot.rotation.x = THREE.MathUtils.lerp(-0.7, -2.55, easeWind);
         rig.rightArmPivot.rotation.x = THREE.MathUtils.lerp(-1.0, -2.65, easeWind);
         rig.leftArmPivot.rotation.z = THREE.MathUtils.lerp(0.34, 0.46, easeWind);
         rig.rightArmPivot.rotation.z = THREE.MathUtils.lerp(-0.34, -0.46, easeWind);
       } else {
-        // Explosive Thrust: Thrusting torso forward and swinging arms down with full body weight
         const h = (p - 0.32) / 0.68;
         const easePush = 1 - Math.pow(1 - h, 3);
         rig.bodyPivot.rotation.z = THREE.MathUtils.lerp(0.24, -0.36, easePush);
@@ -595,103 +599,132 @@ export function updateGnomeAnimation(
         rig.headPivot.rotation.x = THREE.MathUtils.lerp(-0.22, 0.25, easePush);
         rig.headPivot.rotation.y = 0.38;
 
-        // Arms push downwards past chest with wide clearance
         rig.leftArmPivot.rotation.x = THREE.MathUtils.lerp(-2.55, -0.35, easePush);
         rig.rightArmPivot.rotation.x = THREE.MathUtils.lerp(-2.65, -0.25, easePush);
         rig.leftArmPivot.rotation.z = THREE.MathUtils.lerp(0.46, 0.52, easePush);
         rig.rightArmPivot.rotation.z = THREE.MathUtils.lerp(-0.46, -0.52, easePush);
       }
       rig.group.position.y = rig.baseY;
-    } else if (spinPhase === 'spinning' || spinPhase === 'revealing' || spinPhase === 'revealed') {
-      // High-energy celebration hop & wave while wheel spins fast!
+    } else if (isCheering) {
       const bounce = Math.abs(Math.sin(t * 8.5)) * 0.10 * (0.5 + wheelSpeedRatio * 0.5);
-      rig.group.position.y = rig.baseY + bounce;
-      rig.bodyPivot.rotation.z = Math.sin(t * 6.0) * 0.12;
-      rig.bodyPivot.rotation.x = 0.08 + Math.cos(t * 7.0) * 0.06;
+      rig.group.position.y = THREE.MathUtils.damp(rig.group.position.y, rig.baseY + bounce, 14, dt);
+      rig.bodyPivot.rotation.z = THREE.MathUtils.damp(rig.bodyPivot.rotation.z, Math.sin(t * 6.0) * 0.12, smooth, dt);
+      rig.bodyPivot.rotation.x = THREE.MathUtils.damp(rig.bodyPivot.rotation.x, 0.08 + Math.cos(t * 7.0) * 0.06, smooth, dt);
 
-      // Both arms waving high in the air away from body
-      rig.leftArmPivot.rotation.x = -2.35 + Math.sin(t * 9.5) * 0.35;
-      rig.rightArmPivot.rotation.x = -2.35 + Math.cos(t * 9.5) * 0.35;
-      rig.leftArmPivot.rotation.z = 0.42 + Math.sin(t * 5.0) * 0.12;
-      rig.rightArmPivot.rotation.z = -0.42 - Math.sin(t * 5.0) * 0.12;
-      rig.headPivot.rotation.y = 0.28 + Math.sin(t * 4.2) * 0.18;
+      rig.leftArmPivot.rotation.x = THREE.MathUtils.damp(rig.leftArmPivot.rotation.x, -2.35 + Math.sin(t * 9.5) * 0.35, 12, dt);
+      rig.rightArmPivot.rotation.x = THREE.MathUtils.damp(rig.rightArmPivot.rotation.x, -2.35 + Math.cos(t * 9.5) * 0.35, 12, dt);
+      rig.leftArmPivot.rotation.z = THREE.MathUtils.damp(rig.leftArmPivot.rotation.z, 0.42 + Math.sin(t * 5.0) * 0.12, 12, dt);
+      rig.rightArmPivot.rotation.z = THREE.MathUtils.damp(rig.rightArmPivot.rotation.z, -0.42 - Math.sin(t * 5.0) * 0.12, 12, dt);
+      rig.headPivot.rotation.y = THREE.MathUtils.damp(rig.headPivot.rotation.y, 0.28 + Math.sin(t * 4.2) * 0.18, smooth, dt);
     } else {
-      // Idle resting pose: arms angled safely away from body
-      rig.group.position.y = rig.baseY + Math.sin(t * 2.0) * 0.015;
-      rig.bodyPivot.rotation.z = -0.06 + Math.sin(t * 1.6) * 0.04;
-      rig.bodyPivot.rotation.x = 0.05;
-      rig.leftArmPivot.rotation.x = -0.55 + Math.sin(t * 2.2) * 0.08;
-      rig.rightArmPivot.rotation.x = -0.85 + Math.cos(t * 2.4) * 0.12;
-      rig.leftArmPivot.rotation.z = 0.36;
-      rig.rightArmPivot.rotation.z = -0.38;
-      rig.headPivot.rotation.y = 0.22 + Math.sin(t * 1.1) * 0.18;
+      rig.group.position.y = THREE.MathUtils.damp(rig.group.position.y, rig.baseY + Math.sin(t * 2.0) * 0.015, smooth, dt);
+      rig.bodyPivot.rotation.z = THREE.MathUtils.damp(rig.bodyPivot.rotation.z, -0.06 + Math.sin(t * 1.6) * 0.04, smooth, dt);
+      rig.bodyPivot.rotation.x = THREE.MathUtils.damp(rig.bodyPivot.rotation.x, 0.05, smooth, dt);
+      rig.leftArmPivot.rotation.x = THREE.MathUtils.damp(rig.leftArmPivot.rotation.x, -0.55 + Math.sin(t * 2.2) * 0.08, smooth, dt);
+      rig.rightArmPivot.rotation.x = THREE.MathUtils.damp(rig.rightArmPivot.rotation.x, -0.85 + Math.cos(t * 2.4) * 0.12, smooth, dt);
+      rig.leftArmPivot.rotation.z = THREE.MathUtils.damp(rig.leftArmPivot.rotation.z, 0.36, smooth, dt);
+      rig.rightArmPivot.rotation.z = THREE.MathUtils.damp(rig.rightArmPivot.rotation.z, -0.38, smooth, dt);
+      rig.headPivot.rotation.y = THREE.MathUtils.damp(rig.headPivot.rotation.y, 0.22 + Math.sin(t * 1.1) * 0.18, smooth, dt);
     }
     return;
   }
 
   if (role === 'rimWatcher') {
-    if (spinPhase === 'spinning' || spinPhase === 'revealing' || spinPhase === 'revealed') {
-      const waveSpeed = 10.0;
-      rig.bodyPivot.rotation.z = 0.22 + Math.sin(t * 3.5) * 0.08;
-      rig.rightArmPivot.rotation.x = -2.35 + Math.sin(t * waveSpeed) * 0.45;
-      rig.rightArmPivot.rotation.z = -0.48 + Math.cos(t * waveSpeed) * 0.18;
-      rig.leftArmPivot.rotation.x = -1.2;
-      rig.leftArmPivot.rotation.z = 0.38;
-      rig.headPivot.rotation.z = 0.12 + Math.sin(t * 3.5) * 0.1;
-      rig.group.position.y = rig.baseY + Math.abs(Math.sin(t * 8.0)) * 0.08;
+    if (isCheering) {
+      const waveSpeed = 9.5;
+      const cheerHop = Math.abs(Math.sin(t * 7.5)) * 0.075;
+      rig.group.position.y = THREE.MathUtils.damp(rig.group.position.y, rig.baseY + cheerHop, 14, dt);
+      rig.bodyPivot.rotation.z = THREE.MathUtils.damp(rig.bodyPivot.rotation.z, 0.12 + Math.sin(t * 4.5) * 0.10, smooth, dt);
+      rig.bodyPivot.rotation.x = THREE.MathUtils.damp(rig.bodyPivot.rotation.x, Math.sin(t * 7.5) * 0.08, smooth, dt);
+      rig.rightArmPivot.rotation.x = THREE.MathUtils.damp(rig.rightArmPivot.rotation.x, -2.35 + Math.sin(t * waveSpeed) * 0.42, 12, dt);
+      rig.rightArmPivot.rotation.z = THREE.MathUtils.damp(rig.rightArmPivot.rotation.z, -0.48 + Math.cos(t * waveSpeed) * 0.18, 12, dt);
+      rig.leftArmPivot.rotation.x = THREE.MathUtils.damp(rig.leftArmPivot.rotation.x, -2.15 + Math.cos(t * waveSpeed) * 0.32, 12, dt);
+      rig.leftArmPivot.rotation.z = THREE.MathUtils.damp(rig.leftArmPivot.rotation.z, 0.44 + Math.sin(t * waveSpeed) * 0.14, 12, dt);
+      rig.headPivot.rotation.y = THREE.MathUtils.damp(rig.headPivot.rotation.y, 0.24 + Math.sin(t * 3.8) * 0.18, smooth, dt);
+      rig.headPivot.rotation.z = THREE.MathUtils.damp(rig.headPivot.rotation.z, 0.08 + Math.sin(t * 4.2) * 0.10, smooth, dt);
     } else {
-      rig.bodyPivot.rotation.z = 0.15 + Math.sin(t * 2.0) * 0.04;
-      rig.rightArmPivot.rotation.x = -1.85 + Math.sin(t * 2.6) * 0.15;
-      rig.rightArmPivot.rotation.z = -0.42;
-      rig.leftArmPivot.rotation.x = -0.75;
-      rig.leftArmPivot.rotation.z = 0.35;
-      rig.headPivot.rotation.z = 0.08 + Math.sin(t * 1.8) * 0.05;
-      rig.group.position.y = rig.baseY + Math.sin(t * 2.0) * 0.02;
+      // Curious ladder lookout: subtle breathing, glancing at wheel & waving gently
+      rig.group.position.y = THREE.MathUtils.damp(rig.group.position.y, rig.baseY + Math.sin(t * 2.2) * 0.015, smooth, dt);
+      rig.bodyPivot.rotation.z = THREE.MathUtils.damp(rig.bodyPivot.rotation.z, 0.08 + Math.sin(t * 1.7) * 0.05, smooth, dt);
+      rig.bodyPivot.rotation.x = THREE.MathUtils.damp(rig.bodyPivot.rotation.x, Math.sin(t * 1.4) * 0.04, smooth, dt);
+      rig.rightArmPivot.rotation.x = THREE.MathUtils.damp(rig.rightArmPivot.rotation.x, -1.75 + Math.sin(t * 2.8) * 0.18, smooth, dt);
+      rig.rightArmPivot.rotation.z = THREE.MathUtils.damp(rig.rightArmPivot.rotation.z, -0.44 + Math.cos(t * 2.2) * 0.06, smooth, dt);
+      rig.leftArmPivot.rotation.x = THREE.MathUtils.damp(rig.leftArmPivot.rotation.x, -0.62 + Math.sin(t * 2.0) * 0.08, smooth, dt);
+      rig.leftArmPivot.rotation.z = THREE.MathUtils.damp(rig.leftArmPivot.rotation.z, 0.36, smooth, dt);
+      rig.headPivot.rotation.y = THREE.MathUtils.damp(rig.headPivot.rotation.y, 0.25 + Math.sin(t * 1.2) * 0.22, smooth, dt);
+      rig.headPivot.rotation.z = THREE.MathUtils.damp(rig.headPivot.rotation.z, Math.sin(t * 1.6) * 0.07, smooth, dt);
     }
     return;
   }
 
   if (role === 'elderOnLog') {
-    const legSpeed = spinPhase === 'idle' ? 1.6 : 5.5;
-    rig.leftLegPivot.rotation.x = Math.sin(t * legSpeed) * 0.12;
-    rig.rightLegPivot.rotation.x = -Math.sin(t * legSpeed) * 0.12;
-
-    if (spinPhase === 'idle') {
-      rig.bodyPivot.rotation.z = Math.sin(t * 1.4) * 0.04;
-      rig.headPivot.rotation.y = Math.sin(t * 0.9) * 0.18;
-      rig.leftArmPivot.rotation.x = -0.35 + Math.sin(t * 1.8) * 0.08;
-      rig.rightArmPivot.rotation.x = -0.55 + Math.cos(t * 1.8) * 0.1;
-      rig.leftArmPivot.rotation.z = 0.34;
-      rig.rightArmPivot.rotation.z = -0.34;
+    if (rig.options.seated) {
+      const legSpeed = isCheering ? 5.5 : 1.6;
+      rig.leftLegPivot.rotation.x = Math.sin(t * legSpeed) * 0.12;
+      rig.rightLegPivot.rotation.x = -Math.sin(t * legSpeed) * 0.12;
     } else {
-      rig.bodyPivot.rotation.z = Math.sin(t * 5.5) * 0.1;
-      rig.headPivot.rotation.y = 0.25 + Math.sin(t * 4.0) * 0.15;
-      rig.leftArmPivot.rotation.x = -1.95 + Math.sin(t * 10.0) * 0.35;
-      rig.rightArmPivot.rotation.x = -1.95 + Math.cos(t * 10.0) * 0.35;
-      rig.leftArmPivot.rotation.z = 0.42 + Math.sin(t * 8.0) * 0.12;
-      rig.rightArmPivot.rotation.z = -0.42 - Math.sin(t * 8.0) * 0.12;
+      rig.leftLegPivot.rotation.x = 0;
+      rig.rightLegPivot.rotation.x = 0;
+    }
+
+    if (isCheering) {
+      const cheerBounce = Math.abs(Math.sin(t * 7.2)) * 0.07;
+      rig.group.position.y = THREE.MathUtils.damp(rig.group.position.y, rig.baseY + cheerBounce, 13, dt);
+      rig.bodyPivot.rotation.z = THREE.MathUtils.damp(rig.bodyPivot.rotation.z, Math.sin(t * 5.2) * 0.11, smooth, dt);
+      rig.bodyPivot.rotation.x = THREE.MathUtils.damp(rig.bodyPivot.rotation.x, 0.05 + Math.cos(t * 7.2) * 0.06, smooth, dt);
+      rig.headPivot.rotation.y = THREE.MathUtils.damp(rig.headPivot.rotation.y, -0.18 + Math.sin(t * 3.8) * 0.18, smooth, dt);
+      rig.headPivot.rotation.x = THREE.MathUtils.damp(rig.headPivot.rotation.x, Math.sin(t * 6.5) * 0.09, smooth, dt);
+      rig.leftArmPivot.rotation.x = THREE.MathUtils.damp(rig.leftArmPivot.rotation.x, -2.05 + Math.sin(t * 9.5) * 0.35, 12, dt);
+      rig.rightArmPivot.rotation.x = THREE.MathUtils.damp(rig.rightArmPivot.rotation.x, -2.05 + Math.cos(t * 9.5) * 0.35, 12, dt);
+      rig.leftArmPivot.rotation.z = THREE.MathUtils.damp(rig.leftArmPivot.rotation.z, 0.44 + Math.sin(t * 7.5) * 0.12, 12, dt);
+      rig.rightArmPivot.rotation.z = THREE.MathUtils.damp(rig.rightArmPivot.rotation.z, -0.44 - Math.sin(t * 7.5) * 0.12, 12, dt);
+    } else {
+      rig.group.position.y = THREE.MathUtils.damp(rig.group.position.y, rig.baseY + Math.sin(t * 1.9) * 0.012, smooth, dt);
+      rig.bodyPivot.rotation.z = THREE.MathUtils.damp(rig.bodyPivot.rotation.z, Math.sin(t * 1.4) * 0.05, smooth, dt);
+      rig.bodyPivot.rotation.x = THREE.MathUtils.damp(rig.bodyPivot.rotation.x, Math.cos(t * 1.6) * 0.03, smooth, dt);
+      rig.headPivot.rotation.y = THREE.MathUtils.damp(rig.headPivot.rotation.y, Math.sin(t * 0.95) * 0.24, smooth, dt);
+      rig.headPivot.rotation.x = THREE.MathUtils.damp(rig.headPivot.rotation.x, Math.sin(t * 1.5) * 0.05, smooth, dt);
+      rig.leftArmPivot.rotation.x = THREE.MathUtils.damp(rig.leftArmPivot.rotation.x, -0.35 + Math.sin(t * 1.9) * 0.09, smooth, dt);
+      rig.rightArmPivot.rotation.x = THREE.MathUtils.damp(rig.rightArmPivot.rotation.x, -0.55 + Math.cos(t * 1.9) * 0.11, smooth, dt);
+      rig.leftArmPivot.rotation.z = THREE.MathUtils.damp(rig.leftArmPivot.rotation.z, 0.36, smooth, dt);
+      rig.rightArmPivot.rotation.z = THREE.MathUtils.damp(rig.rightArmPivot.rotation.z, -0.36, smooth, dt);
     }
     return;
   }
 
-  // Ground Gnomes (stump & snow spectators)
-  if (spinPhase === 'idle') {
-    rig.group.position.y = rig.baseY;
-    rig.bodyPivot.rotation.z = Math.sin(t * 1.5) * 0.04;
-    rig.headPivot.rotation.y = Math.sin(t * 1.1) * 0.24;
-    rig.leftArmPivot.rotation.x = -0.30 + Math.sin(t * 2.0) * 0.08;
-    rig.rightArmPivot.rotation.x = -0.75 + Math.sin(t * 2.3) * 0.14;
-    rig.leftArmPivot.rotation.z = 0.35;
-    rig.rightArmPivot.rotation.z = -0.38;
+  // Ground & Bucket Spectator Gnomes
+  if (isCheering) {
+    const jump = Math.abs(Math.sin(t * 7.8)) * 0.16;
+    rig.group.position.y = THREE.MathUtils.damp(rig.group.position.y, rig.baseY + jump, 15, dt);
+    rig.bodyPivot.rotation.z = THREE.MathUtils.damp(rig.bodyPivot.rotation.z, Math.sin(t * 7.8) * 0.11, smooth, dt);
+    rig.bodyPivot.rotation.x = THREE.MathUtils.damp(rig.bodyPivot.rotation.x, Math.cos(t * 7.8) * 0.07, smooth, dt);
+    rig.headPivot.rotation.y = THREE.MathUtils.damp(
+      rig.headPivot.rotation.y,
+      (role === 'groundHelper' ? 0.22 : -0.22) + Math.sin(t * 4.4) * 0.18,
+      smooth,
+      dt
+    );
+    rig.headPivot.rotation.z = THREE.MathUtils.damp(rig.headPivot.rotation.z, Math.sin(t * 5.5) * 0.10, smooth, dt);
+    rig.leftArmPivot.rotation.x = THREE.MathUtils.damp(rig.leftArmPivot.rotation.x, -2.42 + Math.sin(t * 10.0) * 0.38, 12, dt);
+    rig.rightArmPivot.rotation.x = THREE.MathUtils.damp(rig.rightArmPivot.rotation.x, -2.42 - Math.sin(t * 10.0) * 0.38, 12, dt);
+    rig.leftArmPivot.rotation.z = THREE.MathUtils.damp(rig.leftArmPivot.rotation.z, 0.45 + Math.cos(t * 6.0) * 0.1, 12, dt);
+    rig.rightArmPivot.rotation.z = THREE.MathUtils.damp(rig.rightArmPivot.rotation.z, -0.45 - Math.cos(t * 6.0) * 0.1, 12, dt);
+    // Subtle joyful kick during jump peak
+    const kickWave = Math.sin(t * 7.8) * 0.14;
+    rig.leftLegPivot.rotation.x = THREE.MathUtils.damp(rig.leftLegPivot.rotation.x, kickWave, 12, dt);
+    rig.rightLegPivot.rotation.x = THREE.MathUtils.damp(rig.rightLegPivot.rotation.x, -kickWave, 12, dt);
   } else {
-    const jump = Math.abs(Math.sin(t * 7.5)) * 0.18;
-    rig.group.position.y = rig.baseY + jump;
-    rig.bodyPivot.rotation.z = Math.sin(t * 7.5) * 0.1;
-    rig.headPivot.rotation.y = (role === 'groundHelper' ? 0.22 : -0.22) + Math.sin(t * 4.2) * 0.16;
-    rig.leftArmPivot.rotation.x = -2.45 + Math.sin(t * 10.0) * 0.38;
-    rig.rightArmPivot.rotation.x = -2.45 - Math.sin(t * 10.0) * 0.38;
-    rig.leftArmPivot.rotation.z = 0.45;
-    rig.rightArmPivot.rotation.z = -0.45;
+    rig.group.position.y = THREE.MathUtils.damp(rig.group.position.y, rig.baseY + Math.sin(t * 2.1) * 0.012, smooth, dt);
+    rig.bodyPivot.rotation.z = THREE.MathUtils.damp(rig.bodyPivot.rotation.z, Math.sin(t * 1.55) * 0.055, smooth, dt);
+    rig.bodyPivot.rotation.x = THREE.MathUtils.damp(rig.bodyPivot.rotation.x, Math.cos(t * 1.8) * 0.035, smooth, dt);
+    rig.headPivot.rotation.y = THREE.MathUtils.damp(rig.headPivot.rotation.y, Math.sin(t * 1.15) * 0.26, smooth, dt);
+    rig.headPivot.rotation.z = THREE.MathUtils.damp(rig.headPivot.rotation.z, Math.sin(t * 1.45) * 0.07, smooth, dt);
+    rig.leftArmPivot.rotation.x = THREE.MathUtils.damp(rig.leftArmPivot.rotation.x, -0.32 + Math.sin(t * 2.1) * 0.10, smooth, dt);
+    rig.rightArmPivot.rotation.x = THREE.MathUtils.damp(rig.rightArmPivot.rotation.x, -0.85 + Math.sin(t * 2.4) * 0.18, smooth, dt);
+    rig.leftArmPivot.rotation.z = THREE.MathUtils.damp(rig.leftArmPivot.rotation.z, 0.36 + Math.sin(t * 1.7) * 0.05, smooth, dt);
+    rig.rightArmPivot.rotation.z = THREE.MathUtils.damp(rig.rightArmPivot.rotation.z, -0.38 - Math.cos(t * 1.7) * 0.05, smooth, dt);
+    rig.leftLegPivot.rotation.x = THREE.MathUtils.damp(rig.leftLegPivot.rotation.x, 0, smooth, dt);
+    rig.rightLegPivot.rotation.x = THREE.MathUtils.damp(rig.rightLegPivot.rotation.x, 0, smooth, dt);
   }
 }
 
@@ -706,6 +739,7 @@ export interface ReindeerRig {
   leftEarPivot: THREE.Group;
   rightEarPivot: THREE.Group;
   tailPivot: THREE.Group;
+  scarfTailPivot: THREE.Group;
   legPivots: { upper: THREE.Group; lower: THREE.Group }[];
   grazingStyle: boolean;
   phaseOffset: number;
@@ -714,7 +748,9 @@ export interface ReindeerRig {
 export function createReindeer(
   grazingStyle: boolean,
   phaseOffset: number,
-  isSoftwareGl: boolean
+  isSoftwareGl: boolean,
+  scarfColorHex: number = 0xd62428,
+  scarfTrimHex: number = 0xf5ca65
 ): ReindeerRig {
   const group = new THREE.Group();
 
@@ -830,6 +866,59 @@ export function createReindeer(
   neck.position.set(0.08, 0.26, 0);
   neck.castShadow = !isSoftwareGl;
   neckPivot.add(neck);
+
+  // Cozy Festive Reindeer Scarf wrapped around the neck
+  const scarfMat = new THREE.MeshStandardMaterial({
+    color: scarfColorHex,
+    roughness: 0.65,
+    metalness: 0.04,
+  });
+  const scarfTrimMat = new THREE.MeshStandardMaterial({
+    color: scarfTrimHex,
+    roughness: 0.52,
+    metalness: 0.14,
+  });
+
+  const scarfCollar = new THREE.Mesh(new THREE.TorusGeometry(0.185, 0.050, 12, 24), scarfMat);
+  scarfCollar.rotation.x = Math.PI / 2;
+  scarfCollar.position.set(0.08, 0.20, 0);
+  scarfCollar.castShadow = !isSoftwareGl;
+  neckPivot.add(scarfCollar);
+
+  const scarfTrimRing = new THREE.Mesh(new THREE.TorusGeometry(0.192, 0.016, 8, 24), scarfTrimMat);
+  scarfTrimRing.rotation.x = Math.PI / 2;
+  scarfTrimRing.position.set(0.08, 0.162, 0);
+  neckPivot.add(scarfTrimRing);
+
+  const scarfKnot = new THREE.Mesh(new THREE.SphereGeometry(0.055, 10, 8), scarfMat);
+  scarfKnot.position.set(0.24, 0.19, 0.13);
+  neckPivot.add(scarfKnot);
+
+  const scarfTailPivot = new THREE.Group();
+  scarfTailPivot.position.set(0.25, 0.18, 0.14);
+  scarfTailPivot.rotation.z = 0.26;
+  scarfTailPivot.rotation.x = 0.18;
+  neckPivot.add(scarfTailPivot);
+
+  const tailLong = new THREE.Mesh(new THREE.BoxGeometry(0.030, 0.28, 0.085), scarfMat);
+  tailLong.position.set(0.02, -0.14, 0);
+  tailLong.castShadow = !isSoftwareGl;
+  scarfTailPivot.add(tailLong);
+
+  const tailLongStripe = new THREE.Mesh(new THREE.BoxGeometry(0.034, 0.045, 0.088), scarfTrimMat);
+  tailLongStripe.position.set(0.02, -0.24, 0);
+  scarfTailPivot.add(tailLongStripe);
+
+  const tailShort = new THREE.Mesh(new THREE.BoxGeometry(0.026, 0.20, 0.072), scarfMat);
+  tailShort.position.set(-0.01, -0.10, -0.05);
+  tailShort.rotation.x = -0.22;
+  tailShort.castShadow = !isSoftwareGl;
+  scarfTailPivot.add(tailShort);
+
+  const tailShortStripe = new THREE.Mesh(new THREE.BoxGeometry(0.030, 0.038, 0.075), scarfTrimMat);
+  tailShortStripe.position.set(-0.01, -0.17, -0.065);
+  tailShortStripe.rotation.x = -0.22;
+  scarfTailPivot.add(tailShortStripe);
 
   // Head Pivot
   const headPivot = new THREE.Group();
@@ -979,38 +1068,73 @@ export function createReindeer(
     leftEarPivot,
     rightEarPivot,
     tailPivot,
+    scarfTailPivot,
     legPivots,
     grazingStyle,
     phaseOffset,
   };
 }
 
-export function updateReindeerIdle(rig: ReindeerRig, elapsed: number) {
+export function updateReindeerIdle(
+  rig: ReindeerRig,
+  elapsed: number,
+  delta: number,
+  spinPhase: SpinPhase
+) {
   const t = elapsed + rig.phaseOffset;
+  const dt = Math.min(delta, 0.05);
+  const isExcited = spinPhase === 'spinning' || spinPhase === 'revealing' || spinPhase === 'revealed';
 
-  if (rig.grazingStyle) {
-    const grazeWave = Math.sin(t * 0.65);
-    rig.neckPivot.rotation.z = -0.82 + grazeWave * 0.28;
-    rig.headPivot.rotation.y = Math.sin(t * 0.95) * 0.24;
-    rig.headPivot.rotation.z = 0.35 - grazeWave * 0.16;
+  if (isExcited) {
+    // Alert, excited reindeer looking toward the spinning wheel / revealed prize!
+    const targetNeckZ = -0.22 + Math.sin(t * 4.2) * 0.08;
+    const targetHeadY = (rig.grazingStyle ? -0.32 : 0.32) + Math.sin(t * 3.0) * 0.14;
+    const targetHeadZ = Math.sin(t * 5.0) * 0.08;
+    rig.neckPivot.rotation.z = THREE.MathUtils.damp(rig.neckPivot.rotation.z, targetNeckZ, 7, dt);
+    rig.headPivot.rotation.y = THREE.MathUtils.damp(rig.headPivot.rotation.y, targetHeadY, 7, dt);
+    rig.headPivot.rotation.z = THREE.MathUtils.damp(rig.headPivot.rotation.z, targetHeadZ, 7, dt);
+    rig.headPivot.rotation.x = THREE.MathUtils.damp(rig.headPivot.rotation.x, Math.cos(t * 3.6) * 0.07, 7, dt);
+  } else if (rig.grazingStyle) {
+    // Natural grazing rhythm: dips head to sniff snow, then lifts head curiously to look around
+    const grazeWave = Math.sin(t * 0.62);
+    const targetNeckZ = -0.78 + grazeWave * 0.32;
+    const targetHeadY = Math.sin(t * 0.92) * 0.28;
+    const targetHeadZ = 0.32 - grazeWave * 0.18;
+    rig.neckPivot.rotation.z = THREE.MathUtils.damp(rig.neckPivot.rotation.z, targetNeckZ, 5, dt);
+    rig.headPivot.rotation.y = THREE.MathUtils.damp(rig.headPivot.rotation.y, targetHeadY, 5, dt);
+    rig.headPivot.rotation.z = THREE.MathUtils.damp(rig.headPivot.rotation.z, targetHeadZ, 5, dt);
+    rig.headPivot.rotation.x = THREE.MathUtils.damp(rig.headPivot.rotation.x, Math.sin(t * 1.4) * 0.05, 5, dt);
   } else {
-    rig.neckPivot.rotation.z = -0.28 + Math.sin(t * 0.8) * 0.06;
-    rig.headPivot.rotation.y = Math.sin(t * 0.72) * 0.34;
-    rig.headPivot.rotation.x = Math.cos(t * 0.9) * 0.08;
+    const targetNeckZ = -0.28 + Math.sin(t * 0.85) * 0.08;
+    const targetHeadY = Math.sin(t * 0.72) * 0.36;
+    const targetHeadX = Math.cos(t * 0.95) * 0.09;
+    rig.neckPivot.rotation.z = THREE.MathUtils.damp(rig.neckPivot.rotation.z, targetNeckZ, 5, dt);
+    rig.headPivot.rotation.y = THREE.MathUtils.damp(rig.headPivot.rotation.y, targetHeadY, 5, dt);
+    rig.headPivot.rotation.z = THREE.MathUtils.damp(rig.headPivot.rotation.z, Math.sin(t * 0.65) * 0.06, 5, dt);
+    rig.headPivot.rotation.x = THREE.MathUtils.damp(rig.headPivot.rotation.x, targetHeadX, 5, dt);
   }
 
-  const earTwitchL = Math.pow(Math.max(0, Math.sin(t * 2.7)), 8) * 0.38;
-  const earTwitchR = Math.pow(Math.max(0, Math.sin(t * 3.1 + 1.9)), 8) * 0.38;
+  const earFreqL = isExcited ? 4.5 : 2.7;
+  const earFreqR = isExcited ? 5.1 : 3.1;
+  const earTwitchL = Math.pow(Math.max(0, Math.sin(t * earFreqL)), 6) * 0.42;
+  const earTwitchR = Math.pow(Math.max(0, Math.sin(t * earFreqR + 1.9)), 6) * 0.42;
   rig.leftEarPivot.rotation.z = earTwitchL;
   rig.rightEarPivot.rotation.z = -earTwitchR;
-  rig.tailPivot.rotation.x = Math.sin(t * 2.4) * 0.14;
+  rig.tailPivot.rotation.x = Math.sin(t * (isExcited ? 7.5 : 2.6)) * (isExcited ? 0.24 : 0.14);
+  rig.scarfTailPivot.rotation.z = 0.26 + Math.sin(t * (isExcited ? 5.5 : 2.5)) * (isExcited ? 0.14 : 0.07);
+  rig.scarfTailPivot.rotation.x = 0.18 + Math.cos(t * 2.1) * 0.06;
 
-  // Gentle subtle breathing / stepping movement in articulated 2-segment legs
+  // Articulated 2-segment leg stepping & prancing motion
   if (rig.legPivots && rig.legPivots.length === 4) {
+    const legFreq = isExcited ? 4.4 : 1.7;
+    const legAmp = isExcited ? 0.11 : 0.055;
     rig.legPivots.forEach((lp, idx) => {
-      const legWave = Math.sin(t * 1.8 + idx * 1.57);
-      lp.upper.rotation.x = 0.08 + legWave * 0.05;
-      lp.lower.rotation.x = -0.12 - Math.abs(legWave) * 0.06;
+      // Diagonal gait pairing: (0,3) vs (1,2)
+      const diagPhase = idx === 0 || idx === 3 ? 0 : Math.PI;
+      const legWave = Math.sin(t * legFreq + diagPhase);
+      const lift = Math.max(0, legWave);
+      lp.upper.rotation.x = THREE.MathUtils.damp(lp.upper.rotation.x, 0.05 + legWave * legAmp, 10, dt);
+      lp.lower.rotation.x = THREE.MathUtils.damp(lp.lower.rotation.x, -0.08 - lift * legAmp * 1.45, 10, dt);
     });
   }
 }
@@ -1312,12 +1436,16 @@ export function createSnowman(isSoftwareGl: boolean): SnowmanRig {
   midBall.castShadow = !isSoftwareGl;
   group.add(midBall);
 
-  // Coal buttons down the torso
-  for (let i = 0; i < 3; i++) {
-    const button = new THREE.Mesh(new THREE.SphereGeometry(0.024, 8, 8), coalMat);
-    button.position.set(0, 0.74 + i * 0.09, 0.27 - i * 0.03);
+  // Two prominent coal buttons seated cleanly on the front surface of the middle snowball
+  const buttonOffsets = [
+    { y: 0.86, z: 0.284 },
+    { y: 0.73, z: 0.272 },
+  ];
+  buttonOffsets.forEach((bo) => {
+    const button = new THREE.Mesh(new THREE.SphereGeometry(0.028, 10, 10), coalMat);
+    button.position.set(0, bo.y, bo.z);
     group.add(button);
-  }
+  });
 
   // 3. Wooden Stick Arms (Articulated with twigs)
   const leftArmPivot = new THREE.Group();
@@ -1443,29 +1571,48 @@ export function createSnowman(isSoftwareGl: boolean): SnowmanRig {
   };
 }
 
-export function updateSnowmanIdle(rig: SnowmanRig, elapsed: number, spinPhase: SpinPhase) {
+export function updateSnowmanIdle(rig: SnowmanRig, elapsed: number, delta: number, spinPhase: SpinPhase) {
   const t = elapsed;
+  const dt = Math.min(delta, 0.05);
   const isExcited = spinPhase === 'spinning' || spinPhase === 'revealing' || spinPhase === 'revealed';
 
-  // Gentle head sway / nod
-  rig.headPivot.rotation.y = Math.sin(t * 1.2) * (isExcited ? 0.28 : 0.12);
-  rig.headPivot.rotation.z = Math.cos(t * 1.5) * (isExcited ? 0.16 : 0.06);
+  // Gentle body rock and cheerful bounce when excited
+  const targetY = isExcited ? rig.baseY + Math.abs(Math.sin(t * 7.2)) * 0.11 : rig.baseY;
+  const targetBodyRoll = isExcited ? Math.sin(t * 5.2) * 0.09 : Math.sin(t * 1.3) * 0.035;
+  rig.group.position.y = THREE.MathUtils.damp(rig.group.position.y, targetY, 13, dt);
+  rig.group.rotation.z = THREE.MathUtils.damp(rig.group.rotation.z, targetBodyRoll, 9, dt);
 
-  // Scarf fluttering in winter breeze (draped forward over chest, fluttering gently)
-  rig.scarfTailPivot.rotation.x = -0.34 + Math.sin(t * 2.8) * 0.06;
-  rig.scarfTailPivot.rotation.z = 0.15 + Math.sin(t * 3.2) * 0.12 + (isExcited ? 0.22 : 0);
-  rig.scarfTailPivot.rotation.y = Math.cos(t * 2.4) * 0.08;
+  // Expressive head look & nod
+  const targetHeadY = Math.sin(t * (isExcited ? 3.2 : 1.15)) * (isExcited ? 0.30 : 0.16);
+  const targetHeadZ = Math.cos(t * (isExcited ? 4.4 : 1.45)) * (isExcited ? 0.14 : 0.06);
+  rig.headPivot.rotation.y = THREE.MathUtils.damp(rig.headPivot.rotation.y, targetHeadY, 9, dt);
+  rig.headPivot.rotation.z = THREE.MathUtils.damp(rig.headPivot.rotation.z, targetHeadZ, 9, dt);
 
-  // Stick arms: resting downwards at sides when idle, raising up to cheer when excited
+  // Scarf fluttering gently in winter breeze
+  rig.scarfTailPivot.rotation.x = -0.34 + Math.sin(t * 2.8) * 0.07;
+  rig.scarfTailPivot.rotation.z = 0.15 + Math.sin(t * 3.4) * 0.13 + (isExcited ? 0.22 : 0);
+  rig.scarfTailPivot.rotation.y = Math.cos(t * 2.5) * 0.09;
+
+  // Stick arms: resting naturally downwards at sides when idle, raising HIGH up to cheer when excited!
+  // (Left branch extends along -X,+Y so positive rotation.z lowers it and negative rotation.z raises it;
+  //  Right branch extends along +X,+Y so negative rotation.z lowers it and positive rotation.z raises it.)
   if (isExcited) {
-    rig.leftArmPivot.rotation.x = -0.3 + Math.sin(t * 8.5) * 0.35;
-    rig.rightArmPivot.rotation.x = -0.3 + Math.cos(t * 8.5) * 0.35;
-    rig.leftArmPivot.rotation.z = 1.15 + Math.sin(t * 7.5) * 0.35;
-    rig.rightArmPivot.rotation.z = -1.15 - Math.cos(t * 7.5) * 0.35;
+    const targetLeftZ = -0.52 + Math.sin(t * 8.5) * 0.28;
+    const targetRightZ = 0.52 - Math.cos(t * 8.5) * 0.28;
+    const targetLeftX = -0.25 + Math.sin(t * 7.2) * 0.22;
+    const targetRightX = -0.25 + Math.cos(t * 7.2) * 0.22;
+    rig.leftArmPivot.rotation.z = THREE.MathUtils.damp(rig.leftArmPivot.rotation.z, targetLeftZ, 11, dt);
+    rig.rightArmPivot.rotation.z = THREE.MathUtils.damp(rig.rightArmPivot.rotation.z, targetRightZ, 11, dt);
+    rig.leftArmPivot.rotation.x = THREE.MathUtils.damp(rig.leftArmPivot.rotation.x, targetLeftX, 11, dt);
+    rig.rightArmPivot.rotation.x = THREE.MathUtils.damp(rig.rightArmPivot.rotation.x, targetRightX, 11, dt);
   } else {
-    rig.leftArmPivot.rotation.x = 0.2 + Math.sin(t * 1.5) * 0.05;
-    rig.rightArmPivot.rotation.x = 0.2 + Math.cos(t * 1.5) * 0.05;
-    rig.leftArmPivot.rotation.z = 0.15 + Math.sin(t * 1.8) * 0.04;
-    rig.rightArmPivot.rotation.z = -0.15 + Math.cos(t * 1.8) * 0.04;
+    const targetLeftZ = 0.82 + Math.sin(t * 1.6) * 0.06;
+    const targetRightZ = -0.82 - Math.cos(t * 1.6) * 0.06;
+    const targetLeftX = 0.08 + Math.sin(t * 1.5) * 0.05;
+    const targetRightX = 0.08 + Math.cos(t * 1.5) * 0.05;
+    rig.leftArmPivot.rotation.z = THREE.MathUtils.damp(rig.leftArmPivot.rotation.z, targetLeftZ, 8, dt);
+    rig.rightArmPivot.rotation.z = THREE.MathUtils.damp(rig.rightArmPivot.rotation.z, targetRightZ, 8, dt);
+    rig.leftArmPivot.rotation.x = THREE.MathUtils.damp(rig.leftArmPivot.rotation.x, targetLeftX, 8, dt);
+    rig.rightArmPivot.rotation.x = THREE.MathUtils.damp(rig.rightArmPivot.rotation.x, targetRightX, 8, dt);
   }
 }

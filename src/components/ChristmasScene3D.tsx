@@ -218,9 +218,6 @@ export function ChristmasScene3D({
     rimLight.position.set(-5.5, 6.5, -6.5);
     scene.add(rimLight);
 
-    const wheelWarmGlow = new THREE.PointLight(0xfff5e0, 4.5, 12.0, 1.3);
-    wheelWarmGlow.position.set(0.0, 3.5, 2.8);
-    scene.add(wheelWarmGlow);
 
     // 3. Procedural Textures
     const maxAniso = renderer.capabilities.getMaxAnisotropy();
@@ -363,7 +360,7 @@ export function ChristmasScene3D({
     const reindeerList: ReindeerRig[] = [];
     const deer1X = -4.65;
     const deer1Z = 0.35;
-    const deer1 = createReindeer(true, 0.5, isSoftwareGl);
+    const deer1 = createReindeer(true, 0.5, isSoftwareGl, 0xd62428, 0xf5ca65);
     deer1.group.position.set(deer1X, groundHeightAt(deer1X, deer1Z), deer1Z);
     deer1.group.rotation.y = 0.55;
     deer1.group.scale.setScalar(1.42);
@@ -373,7 +370,7 @@ export function ChristmasScene3D({
 
     const deer2X = 3.85;
     const deer2Z = 0.35;
-    const deer2 = createReindeer(false, 2.1, isSoftwareGl);
+    const deer2 = createReindeer(false, 2.1, isSoftwareGl, 0x1b7a3d, 0xf5ca65);
     deer2.group.position.set(deer2X, groundHeightAt(deer2X, deer2Z), deer2Z);
     deer2.group.rotation.y = -0.48;
     deer2.group.scale.setScalar(1.42);
@@ -565,8 +562,8 @@ export function ChristmasScene3D({
           callbacksRef.current.onPhaseChange('spinning');
         }
       } else if (phase === 'spinning') {
-        angularVelocity *= Math.exp(-0.26 * delta);
-        angularVelocity = Math.max(0, angularVelocity - 0.16 * delta);
+        angularVelocity *= Math.exp(-0.40 * delta);
+        angularVelocity = Math.max(0, angularVelocity - 0.28 * delta);
 
         rotorAngle += angularVelocity * delta;
         wheel.rotorGroup.rotation.z = rotorAngle;
@@ -652,11 +649,11 @@ export function ChristmasScene3D({
       // Update Gnomes, Snowman & Reindeers
       const speedRatio = THREE.MathUtils.clamp(angularVelocity / maxSpinVelocity, 0, 1);
       for (let i = 0; i < gnomes.length; i++) {
-        updateGnomeAnimation(gnomes[i], elapsed, spinPhaseRef.current, pushElapsed, speedRatio);
+        updateGnomeAnimation(gnomes[i], elapsed, delta, spinPhaseRef.current, pushElapsed, speedRatio);
       }
-      updateSnowmanIdle(snowman, elapsed, spinPhaseRef.current);
+      updateSnowmanIdle(snowman, elapsed, delta, spinPhaseRef.current);
       for (let i = 0; i < reindeerList.length; i++) {
-        updateReindeerIdle(reindeerList[i], elapsed);
+        updateReindeerIdle(reindeerList[i], elapsed, delta, spinPhaseRef.current);
       }
 
       renderer.render(scene, camera);

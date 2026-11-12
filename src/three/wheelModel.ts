@@ -499,8 +499,9 @@ export function createWheelAssembly(
 
   let currentFaceTex: THREE.CanvasTexture | null = null;
   const faceMat = new THREE.MeshStandardMaterial({
-    roughness: 0.28,
+    roughness: 0.88,
     metalness: 0.0,
+    envMapIntensity: 0.08,
     emissive: 0x000000,
     emissiveIntensity: 0.0,
   });

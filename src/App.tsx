@@ -163,7 +163,7 @@ export default function App() {
       {/* 2. Multi-Layer Parallax Snowfall Overlay */}
       <ParallaxSnowOverlay />
 
-      {/* 3. Top-Right Action Buttons Bar (Rich Carved Wood & Brass Medallion Textures) */}
+      {/* 3. Top-Right Action Buttons Bar (Festive Crimson & Brushed Gold Medallions) */}
       <div className="fixed top-4 right-5 z-30 flex items-center gap-3 pointer-events-auto">
         {/* Sound Toggle Button */}
         <button
@@ -171,7 +171,7 @@ export default function App() {
           onClick={toggleSound}
           aria-label={muted ? 'Ativar efeitos sonoros' : 'Silenciar efeitos sonoros'}
           title={muted ? 'Ativar som' : 'Silenciar som'}
-          className="w-12 h-12 rounded-full wood-header-plank flex items-center justify-center text-[#fcebd2] hover:text-[#ffd97d] active:scale-95 transition-all duration-200 shadow-[0_8px_20px_rgba(0,0,0,0.85),inset_0_2px_4px_rgba(255,225,180,0.45),inset_0_-4px_8px_rgba(0,0,0,0.9)] border-2 border-[#8c542e] cursor-pointer"
+          className="w-12 h-12 rounded-full festive-crimson-bar flex items-center justify-center text-[#fff4de] hover:text-[#ffd97d] active:scale-95 transition-all duration-200 cursor-pointer"
         >
           {muted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
         </button>
@@ -182,12 +182,12 @@ export default function App() {
           onClick={handleToggleSignboard}
           aria-label={showSignboard ? 'Fechar configurações da roleta' : 'Abrir configurações da roleta'}
           title={showSignboard ? 'Fechar configurações' : 'Abrir configurações'}
-          className="relative w-12 h-12 rounded-full wood-header-plank flex items-center justify-center text-[#ffd97d] hover:text-[#ffffff] active:scale-95 transition-all duration-300 shadow-[0_8px_20px_rgba(0,0,0,0.85),inset_0_2px_4px_rgba(255,225,180,0.45),inset_0_-4px_8px_rgba(0,0,0,0.9)] border-2 border-[#8c542e] cursor-pointer group"
+          className="relative w-12 h-12 rounded-full festive-crimson-bar flex items-center justify-center text-[#ffd97d] hover:text-[#ffffff] active:scale-95 transition-all duration-300 cursor-pointer group"
         >
           <span
             className={`absolute inset-0 rounded-full transition-opacity duration-300 ${
               showSignboard
-                ? 'opacity-100 shadow-[0_0_18px_#ffd97d] bg-[#ffd97d]/15'
+                ? 'opacity-100 shadow-[0_0_20px_#ffd97d] bg-[#ffd97d]/20'
                 : 'opacity-0'
             }`}
           />
@@ -195,24 +195,24 @@ export default function App() {
             className={`w-6 h-6 z-10 transition-transform duration-700 ease-out ${
               showSignboard
                 ? 'rotate-180 text-[#ffe59e] drop-shadow-[0_0_8px_#ffd97d]'
-                : 'rotate-0 text-[#f5c77e]'
+                : 'rotate-0 text-[#ffd97d]'
             }`}
           />
         </button>
       </div>
 
-      {/* 4. Centered Hanging Wooden Board Modal Overlay (Suspended by ropes, falling from top on open & pulling up on close) */}
+      {/* 4. Centered Hanging Festive Signboard Modal Overlay (Suspended by full-height ropes) */}
       <AnimatePresence>
         {showSignboard && (
           <div className="fixed inset-0 z-40 flex items-center justify-center p-4 pointer-events-none">
-            {/* Backdrop Blur Fade */}
+            {/* Arctic Night Backdrop Blur Fade */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.3 }}
               onClick={handleToggleSignboard}
-              className="absolute inset-0 bg-black/65 backdrop-blur-md pointer-events-auto"
+              className="absolute inset-0 bg-[#030b18]/65 backdrop-blur-sm pointer-events-auto"
             />
 
             {/* Wooden Signboard falling down from top on ropes with spring bounce */}

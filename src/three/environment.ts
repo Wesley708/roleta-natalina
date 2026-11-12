@@ -58,28 +58,6 @@ export function createWinterEnvironment(
   terrainMesh.receiveShadow = !isSoftwareGl;
   group.add(terrainMesh);
 
-  // Low-lying ground fog layer (enhanced for atmospheric density near the floor)
-  const groundFogGeo = new THREE.PlaneGeometry(64, 48);
-  groundFogGeo.rotateX(-Math.PI / 2);
-  const groundFogMat = new THREE.MeshBasicMaterial({
-    color: 0xa0b0df,
-    transparent: true,
-    opacity: 0.25,
-    depthWrite: false,
-    blending: THREE.AdditiveBlending,
-  });
-  const groundFog = new THREE.Mesh(groundFogGeo, groundFogMat);
-  groundFog.position.y = 0.35;
-  group.add(groundFog);
-
-  // Secondary dynamic fog layer for added depth
-  const groundFog2 = new THREE.Mesh(groundFogGeo, groundFogMat.clone());
-  (groundFog2.material as THREE.MeshBasicMaterial).opacity = 0.18;
-  groundFog2.position.y = 0.55;
-  groundFog2.scale.set(1.2, 1.2, 1.2);
-  group.add(groundFog2);
-
-
   // 2. Aurora Borealis & Glowing Moon Arctic Night Sky Dome
   const skyGeo = new THREE.SphereGeometry(46, 40, 28);
   const auroraMaterial = new THREE.ShaderMaterial({
@@ -471,13 +449,6 @@ export function createWinterEnvironment(
   function updateEnvironment(elapsed: number, delta: number) {
     auroraMaterial.uniforms.uTime.value = elapsed;
 
-    // Subtle wind movement for ground fog
-    groundFog.position.x = Math.sin(elapsed * 0.15) * 0.5;
-    groundFog.position.z = Math.cos(elapsed * 0.1) * 0.3;
-    
-    groundFog2.position.x = Math.cos(elapsed * 0.12) * 0.6;
-    groundFog2.position.z = Math.sin(elapsed * 0.08) * 0.4;
-
     // Overhead fairy string light twinkle
     for (let i = 0; i < bulbMaterials.length; i++) {
       bulbMaterials[i].emissiveIntensity = 2.4 + 1.2 * Math.sin(elapsed * 3.4 + i * 1.4);
@@ -490,6 +461,15 @@ export function createWinterEnvironment(
       o.mat.emissiveIntensity = isOn ? 3.6 : 0.06;
       o.halo.material.opacity = isOn ? 0.92 : 0.03;
     });
+
+    // Subtle winter breeze sway on pine trees
+    for (let i = 0; i < animatedTrees.length; i++) {
+      const tree = animatedTrees[i];
+      const windPhase = tree.position.x * 0.32 + tree.position.z * 0.24 + i * 0.45;
+      const breeze = Math.sin(elapsed * 0.95 + windPhase) + Math.sin(elapsed * 2.15 + windPhase * 1.6) * 0.32;
+      tree.rotation.z = breeze * 0.018;
+      tree.rotation.x = Math.cos(elapsed * 0.8 + windPhase * 1.1) * 0.012;
+    }
 
     // Update 3D snow particles
     const attr = snowGeo.attributes.position as THREE.BufferAttribute;

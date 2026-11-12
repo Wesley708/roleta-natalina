@@ -53,22 +53,6 @@ export function createWheelFaceTexture(
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, size, size);
 
-    // Subtle inner center glow
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.rotate(midAngle);
-    const innerGlow = ctx.createRadialGradient(0, 0, 0, 0, 0, radius * 0.85);
-    innerGlow.addColorStop(0, 'rgba(255, 255, 255, 0.20)');
-    innerGlow.addColorStop(0.4, 'rgba(255, 255, 255, 0.04)');
-    innerGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
-    ctx.fillStyle = innerGlow;
-    ctx.beginPath();
-    ctx.arc(0, 0, radius, -sliceAngle, sliceAngle);
-    ctx.lineTo(0, 0);
-    ctx.closePath();
-    ctx.fill();
-    ctx.restore();
-
     // Crisp gold divider line between slices
     ctx.strokeStyle = 'rgba(255, 225, 120, 0.95)';
     ctx.lineWidth = 10;
@@ -83,13 +67,13 @@ export function createWheelFaceTexture(
     ctx.translate(cx, cy);
     ctx.rotate(midAngle);
 
-    const maxTextWidth = radius * 0.64;
-    const innerOffset = radius * 0.24;
-    const outerLimit = radius * 0.90;
+    const maxTextWidth = radius * 0.74;
+    const innerOffset = radius * 0.18;
+    const outerLimit = radius * 0.92;
     const textCenterRadius = (innerOffset + outerLimit) / 2;
 
-    const baseFontPx = Math.max(32, Math.min(52, Math.floor(440 / Math.max(4, count))));
-    ctx.font = `600 ${baseFontPx}px "Plus Jakarta Sans", system-ui, sans-serif`;
+    const baseFontPx = Math.max(38, Math.min(68, Math.floor(560 / Math.max(4, count))));
+    ctx.font = `800 ${baseFontPx}px "Plus Jakarta Sans", system-ui, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
@@ -104,17 +88,20 @@ export function createWheelFaceTexture(
       ctx.rotate(Math.PI);
     }
 
+    // Stretch letter height vertically (Y-axis) by 1.45x so text is taller & occupies more wheel slice space
+    ctx.scale(1.0, 1.45);
+
     // Slim, clean dark outline for high contrast without heavy thickness
     const isLightBg = isLightHex(item.color);
     ctx.lineJoin = 'round';
     ctx.miterLimit = 2;
-    ctx.lineWidth = Math.max(1.5, Math.floor(baseFontPx * 0.04));
-    ctx.strokeStyle = isLightBg ? 'rgba(10, 3, 1, 0.85)' : 'rgba(0, 0, 0, 0.75)';
+    ctx.lineWidth = Math.max(2, Math.floor(baseFontPx * 0.05));
+    ctx.strokeStyle = isLightBg ? 'rgba(10, 3, 1, 0.88)' : 'rgba(0, 0, 0, 0.82)';
     ctx.strokeText(displayLabel, 0, 0);
 
     // Clean text fill with subtle drop shadow
     ctx.shadowColor = isLightBg ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.6)';
-    ctx.shadowBlur = 2;
+    ctx.shadowBlur = 3;
     ctx.shadowOffsetX = 0;
     ctx.shadowOffsetY = 1;
 
